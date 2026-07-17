@@ -67,17 +67,12 @@ background: linear-gradient(180deg, #3b82f6, #1d4ed8); box-shadow: 0 4px 0 #1e40
 flex: 1.4; height: 60px; font-size: 0.95rem;
 background: linear-gradient(180deg, #0ea5e9, #0369a1); box-shadow: 0 4px 0 #075985;
 }
-#pauseBtnToggle {
-position: absolute; top: 72px; right: 28px; z-index: 100; padding: 6px 14px;
-background: var(--accent-yellow); color: #1e293b; font-size: 0.85rem;
-border-radius: 8px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+#pauseBtnToggle, #devBtn {
+position: absolute; top: 72px; z-index: 100; padding: 8px 12px;
+font-size: 1.2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-/* Секретная кнопка разработчика */
-#devBtn {
-position: absolute; top: 72px; left: 28px; z-index: 100; 
-padding: 8px 12px; background: #334155; font-size: 1.2rem;
-border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
+#pauseBtnToggle { right: 28px; background: var(--accent-yellow); color: #1e293b; display: none; }
+#devBtn { left: 28px; background: #334155; }
 .overlay {
 position: absolute; bottom: 0; left: 0; right: 0; top: 56px;
 background-color: rgba(11, 15, 25, 0.98); backdrop-filter: blur(8px);
@@ -107,8 +102,6 @@ flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,
 .item-desc { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; text-align: center; min-height: 24px; }
 .item-price { font-size: 0.85rem; color: var(--accent-yellow); margin-bottom: 6px; font-weight: 700; }
 .buy-btn { width: 100%; padding: 8px; font-size: 0.8rem; }
-
-/* Стили для ника и таблицы лидеров */
 #nickInput {
 width: 200px; padding: 12px; border-radius: 12px; border: none;
 background: #1e293b; color: white; font-size: 1.1rem; text-align: center;
@@ -135,11 +128,8 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <div style="color: var(--accent-yellow)">💰 <span id="coinVal">0</span></div>
 </div>
 <div id="boostBarWrap"><div id="boostBarFill"></div></div>
-
-<!-- Секретная кнопка разработчика -->
 <button id="devBtn" class="btn" title="Меню разработчика">🔑</button>
 <button id="pauseBtnToggle" class="btn">Пауза</button>
-
 <canvas id="gameCanvas"></canvas>
 <div class="controls">
 <button id="lBtn" class="btn btn-control">←</button>
@@ -147,7 +137,6 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button id="rBtn" class="btn btn-control">→</button>
 </div>
 
-<!-- Экран ввода Ника (строгий) -->
 <div id="overlayNick" class="overlay">
 <h1 style="color: var(--accent-blue); margin: 0 0 16px 0; font-size: 1.8rem;">Car Game Deluxe</h1>
 <p style="font-size: 0.9rem; opacity: 0.7; margin: 0 0 24px 0;">Как тебя зовут, гонщик?</p>
@@ -155,7 +144,6 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button id="saveNickBtn" class="btn menu-btn" style="background: var(--accent-green)">Погнали!</button>
 </div>
 
-<!-- Главное меню -->
 <div id="overlayMain" class="overlay hidden">
 <h1 style="color: var(--accent-blue); margin: 0 0 4px 0; font-size: 1.8rem;">Привет, <span id="playerNickDisplay">Игрок</span>!</h1>
 <p style="font-size: 0.85rem; opacity: 0.6; margin: 0 0 24px 0;">Управляй кнопками или тяни пальцем!</p>
@@ -164,7 +152,6 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button id="goLeaderboard" class="btn menu-btn" style="background: var(--accent-cyan)">🏆 Таблица лидеров</button>
 </div>
 
-<!-- Таблица лидеров -->
 <div id="overlayLeaderboard" class="overlay hidden">
 <h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;">🏆 Топ гонщиков</h2>
 <div class="leaderboard-list" id="lbList">
@@ -173,7 +160,6 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button class="btn menu-btn" style="background: var(--accent-red)" onclick="show('overlayMain')">Назад</button>
 </div>
 
-<!-- Гараж -->
 <div id="overlayMarket" class="overlay hidden">
 <div class="market-tabs">
 <button id="tabCars" class="tab-btn active">Машины</button>
@@ -184,14 +170,12 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button class="btn back-to-menu" style="background: var(--accent-red); padding: 10px 42px;">В меню</button>
 </div>
 
-<!-- Пауза -->
 <div id="overlayPause" class="overlay hidden">
 <h2>Пауза</h2>
 <button id="resumeBtn" class="btn menu-btn" style="background: var(--accent-green)">Продолжить</button>
 <button class="btn menu-btn nav-home" style="background: #64748b">Главное меню</button>
 </div>
 
-<!-- Конец игры -->
 <div id="overlayOver" class="overlay hidden">
 <h2 style="color: var(--accent-red); margin: 0 0 8px 0;">Заезд окончен!</h2>
 <p style="margin: 0 0 4px 0; font-weight: 700;">Счет за раунд: <span id="finalScoreVal">0</span></p>
@@ -215,15 +199,15 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- ЛОГИКА НИКА (СТРОГАЯ) ---
+// --- ЛОГИКА НИКА ---
 let playerNick = localStorage.getItem('cg_nick') || '';
-// Если ника нет, или он пустой, или стандартный "Игрок" — показываем экран ввода
 if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
     document.getElementById('overlayNick').classList.remove('hidden');
     document.getElementById('overlayMain').classList.add('hidden');
 } else {
     document.getElementById('playerNickDisplay').textContent = playerNick;
     document.getElementById('overlayNick').classList.add('hidden');
+    document.getElementById('overlayMain').classList.remove('hidden'); // ИСПРАВЛЕНО: показываем меню!
 }
 
 document.getElementById('saveNickBtn').onclick = () => {
@@ -238,32 +222,31 @@ document.getElementById('saveNickBtn').onclick = () => {
     }
 };
 
-// --- СЕКРЕТНОЕ МЕНЮ РАЗРАБОТЧИКА ---
+// --- СЕКРЕТНОЕ МЕНЮ ---
 document.getElementById('devBtn').onclick = () => {
-    const code = prompt("Введите код разработчика:");
+    const code = prompt("🔑 Введите код:");
     if (code === "money") {
         state.coins += 999999;
         saveProgress();
         refreshUI();
-        alert("💰 Куча денег начислена на этот аккаунт!");
+        alert("💰 +999,999 монет!");
     } else if (code === "clear") {
         state.coins = 0;
         saveProgress();
         refreshUI();
-        alert("🧹 Деньги на этом аккаунте очищены!");
+        alert("🧹 Деньги очищены!");
     } else if (code === "cleartop") {
-        if (confirm("⚠️ Вы уверены, что хотите очистить ВЕСЬ глобальный рейтинг?")) {
+        if (confirm("️ Очистить весь рейтинг?")) {
             db.ref('leaderboard').remove().then(() => {
-                alert("🏆 Глобальный рейтинг полностью очищен!");
-                loadLeaderboard(); // Обновить экран, если он открыт
-            }).catch(err => alert("Ошибка: " + err.message));
+                alert("🏆 Рейтинг очищен!");
+                loadLeaderboard();
+            });
         }
     } else if (code !== null) {
         alert("❌ Неверный код!");
     }
 };
 
-// --- ТАБЛИЦА ЛИДЕРОВ ---
 document.getElementById('goLeaderboard').onclick = () => {
     show('overlayLeaderboard');
     loadLeaderboard();
@@ -272,16 +255,14 @@ document.getElementById('goLeaderboard').onclick = () => {
 function loadLeaderboard() {
     const list = document.getElementById('lbList');
     list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>';
-    
     if (!db) {
-        list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ База данных не подключена</div>';
+        list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка базы</div>';
         return;
     }
-
     db.ref('leaderboard').orderByChild('highScore').limitToLast(10).on('value', (snapshot) => {
         const data = snapshot.val();
         if(!data) {
-            list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов. Сыграй первым!</div>';
+            list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов</div>';
             return;
         }
         const sorted = Object.values(data).sort((a, b) => b.highScore - a.highScore);
@@ -291,18 +272,11 @@ function loadLeaderboard() {
                 <span>${Math.floor(p.highScore)} pts</span>
             </div>
         `).join('');
-    }, (error) => {
-        console.error("Ошибка Firebase:", error);
-        list.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка:<br><small>${error.message}</small></div>`;
     });
 }
 
 function saveScoreToDB() {
-    // СТРОГАЯ ПРОВЕРКА: не сохраняем, если ник пустой или "Игрок"
-    if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
-        console.log("Ник не введен, сохранение в таблицу лидеров отменено");
-        return;
-    }
+    if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') return;
     db.ref('leaderboard/' + playerNick).set({
         nick: playerNick,
         highScore: state.highScore,
@@ -311,7 +285,7 @@ function saveScoreToDB() {
     });
 }
 
-// --- ОСНОВНАЯ ИГРА ---
+// --- ИГРА ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let state = {
@@ -339,9 +313,9 @@ const catalogMaps = [
     { id: 'lava', n: 'Адский Трек', p: 500, bg1: '#2d0f0f', bg2: '#180505', line: '#f97316', side: '#7c2d12' }
 ];
 const catalogUpgrades = [
-    { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота на дистанции', max: 3, prices: [50, 120, 250], icon: '🧲' },
-    { id: 'shield', n: 'Турбо Щит', d: 'Ускоряет откат защиты', max: 3, prices: [70, 150, 300], icon: '⚡' },
-    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков за заезд', max: 3, prices: [60, 140, 280], icon: '📈' }
+    { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота', max: 3, prices: [50, 120, 250], icon: '🧲' },
+    { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '' },
+    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '📈' }
 ];
 
 function init() {
@@ -497,7 +471,7 @@ function update(t) {
                 document.getElementById('finalScoreVal').textContent = Math.floor(state.score);
                 document.getElementById('finalHighScoreVal').textContent = Math.floor(state.highScore);
                 saveProgress();
-                saveScoreToDB(); // <-- Сохраняем в общую базу!
+                saveScoreToDB();
                 refreshUI();
                 show('overlayOver');
             }
@@ -641,7 +615,7 @@ function renderCatalog() {
         catalogCars.forEach(item => {
             const isOwned = state.ownedCars.includes(item.id), isActive = state.activeCar === item.id;
             const card = document.createElement('div'); card.className = 'market-item';
-            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
+            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' '}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
             grid.appendChild(card);
             const pCanv = document.createElement('canvas'); pCanv.width = 40; pCanv.height = 55;
             drawCarModel(pCanv.getContext('2d'), item.type, item.c);
