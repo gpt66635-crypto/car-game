@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
@@ -17,172 +16,41 @@
 --accent-yellow: #f59e0b; --accent-cyan: #06b6d4; --text-white: #f8fafc;
 --game-font: 'Plus Jakarta Sans', -apple-system, sans-serif;
 }
-* {
-box-sizing: border-box;
--webkit-tap-highlight-color: transparent;
-user-select: none;
-touch-action: manipulation;
-}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; }
 body {
-font-family: var(--game-font);
-display: flex;
-flex-direction: column;
-justify-content: center;
-align-items: center;
-min-height: 100vh;
-margin: 0;
+font-family: var(--game-font); display: flex; flex-direction: column;
+justify-content: center; align-items: center; min-height: 100vh; margin: 0;
 background: radial-gradient(circle at 50% 0%, #172237 0%, var(--bg-dark) 75%);
-overflow: hidden;
-color: var(--text-white);
-padding-top: env(safe-area-inset-top, 0px);
+overflow: hidden; color: var(--text-white); padding-top: env(safe-area-inset-top, 0px);
 overscroll-behavior: none;
 }
 .game-container {
-position: relative;
-background: linear-gradient(160deg, var(--panel-dark), #0e1420);
-border-radius: 24px;
-box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-padding: 16px;
-width: 95%;
-max-width: 440px;
-display: flex;
-flex-direction: column;
-align-items: center;
-border: 1px solid rgba(255,255,255,0.06);
+position: relative; background: linear-gradient(160deg, var(--panel-dark), #0e1420);
+border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+padding: 16px; width: 95%; max-width: 440px; display: flex; flex-direction: column;
+align-items: center; border: 1px solid rgba(255,255,255,0.06);
 }
-.score-row {
-display: flex;
-justify-content: space-between;
-width: 100%;
-margin-bottom: 12px;
-font-weight: 700;
-font-size: 1rem;
-gap: 8px;
-z-index: 60;
-}
-.score-row > div {
-flex: 1;
-background: rgba(255, 255, 255, 0.07);
-padding: 8px 10px;
-border-radius: 12px;
-text-align: center;
-border: 1px solid rgba(255,255,255,0.03);
-white-space: nowrap;
-}
-#boostBarWrap {
-width: 100%;
-height: 8px;
-background: rgba(255,255,255,0.08);
-border-radius: 6px;
-margin-bottom: 12px;
-overflow: hidden;
-}
-#boostBarFill {
-height: 100%;
-width: 100%;
-background: linear-gradient(90deg, #3b82f6, var(--accent-cyan));
-transition: width 0.1s linear;
-}
-#gameCanvas {
-background-color: var(--road-grey);
-border: 1px solid rgba(255,255,255,0.1);
-border-radius: 16px;
-width: 100%;
-height: 400px;
-display: block;
-touch-action: none;
-box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
+.score-row { display: flex; justify-content: space-between; width: 100%; margin-bottom: 12px; font-weight: 700; font-size: 1rem; gap: 8px; z-index: 60; }
+.score-row > div { flex: 1; background: rgba(255, 255, 255, 0.07); padding: 8px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.03); white-space: nowrap; }
+#boostBarWrap { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+#boostBarFill { height: 100%; width: 100%; background: linear-gradient(90deg, #3b82f6, var(--accent-cyan)); transition: width 0.1s linear; }
+#gameCanvas { background-color: var(--road-grey); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; width: 100%; height: 400px; display: block; touch-action: none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
 .controls { display: flex; width: 100%; gap: 12px; margin-top: 14px; }
-.btn {
-border: none;
-border-radius: 14px;
-color: white;
-font-weight: 700;
-cursor: pointer;
-transition: transform 0.05s;
-display: flex;
-align-items: center;
-justify-content: center;
-font-family: inherit;
-}
+.btn { border: none; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-family: inherit; }
 .btn:active { transform: scale(0.96); }
-.btn-control {
-flex: 1;
-height: 60px;
-font-size: 1.8rem;
-background: linear-gradient(180deg, #3b82f6, #1d4ed8);
-box-shadow: 0 4px 0 #1e40af;
-}
-#shieldBtn {
-flex: 1.4;
-height: 60px;
-font-size: 0.95rem;
-background: linear-gradient(180deg, #0ea5e9, #0369a1);
-box-shadow: 0 4px 0 #075985;
-}
-#pauseBtnToggle, #devBtn {
-position: absolute;
-top: 72px;
-z-index: 100;
-padding: 8px 12px;
-font-size: 1.2rem;
-border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
+.btn-control { flex: 1; height: 60px; font-size: 1.8rem; background: linear-gradient(180deg, #3b82f6, #1d4ed8); box-shadow: 0 4px 0 #1e40af; }
+#shieldBtn { flex: 1.4; height: 60px; font-size: 0.95rem; background: linear-gradient(180deg, #0ea5e9, #0369a1); box-shadow: 0 4px 0 #075985; }
+#pauseBtnToggle, #devBtn { position: absolute; top: 72px; z-index: 100; padding: 8px 12px; font-size: 1.2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 #pauseBtnToggle { right: 28px; background: var(--accent-yellow); color: #1e293b; display: none; }
 #devBtn { left: 28px; background: #334155; }
-.overlay {
-position: absolute;
-bottom: 0;
-left: 0;
-right: 0;
-top: 56px;
-background-color: rgba(11, 15, 25, 0.98);
-backdrop-filter: blur(8px);
-border-radius: 0 0 24px 24px;
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-padding: 24px;
-z-index: 50;
-text-align: center;
-}
+.overlay { position: absolute; bottom: 0; left: 0; right: 0; top: 56px; background-color: rgba(11, 15, 25, 0.98); backdrop-filter: blur(8px); border-radius: 0 0 24px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; z-index: 50; text-align: center; }
 .hidden { display: none !important; }
 .menu-btn { width: 240px; padding: 14px; margin-bottom: 12px; font-size: 1.05rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .market-tabs { display: flex; gap: 6px; width: 100%; margin-bottom: 12px; }
-.tab-btn {
-flex: 1;
-padding: 10px 4px;
-border-radius: 10px;
-background: #1e293b;
-color: #94a3b8;
-border: 1px solid rgba(255,255,255,0.05);
-font-weight: 700;
-font-family: inherit;
-font-size: 0.85rem;
-}
+.tab-btn { flex: 1; padding: 10px 4px; border-radius: 10px; background: #1e293b; color: #94a3b8; border: 1px solid rgba(255,255,255,0.05); font-weight: 700; font-family: inherit; font-size: 0.85rem; }
 .tab-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
-.market-grid {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 10px;
-width: 100%;
-margin-bottom: 16px;
-max-height: 240px;
-overflow-y: auto;
-padding: 4px;
-}
-.market-item {
-background: #1e293b;
-border-radius: 12px;
-padding: 12px;
-display: flex;
-flex-direction: column;
-align-items: center;
-border: 1px solid rgba(255,255,255,0.04);
-}
+.market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; margin-bottom: 16px; max-height: 240px; overflow-y: auto; padding: 4px; }
+.market-item { background: #1e293b; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,0.04); }
 .car-preview-render { width: 40px; height: 55px; margin-bottom: 6px; }
 .map-preview-render { width: 64px; height: 42px; border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.15); }
 .upgrade-icon-render { font-size: 1.8rem; margin-bottom: 6px; height: 55px; display: flex; align-items: center; }
@@ -190,35 +58,9 @@ border: 1px solid rgba(255,255,255,0.04);
 .item-desc { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; text-align: center; min-height: 24px; }
 .item-price { font-size: 0.85rem; color: var(--accent-yellow); margin-bottom: 6px; font-weight: 700; }
 .buy-btn { width: 100%; padding: 8px; font-size: 0.8rem; }
-#nickInput {
-width: 200px;
-padding: 12px;
-border-radius: 12px;
-border: none;
-background: #1e293b;
-color: white;
-font-size: 1.1rem;
-text-align: center;
-margin-bottom: 16px;
-outline: none;
-border: 1px solid rgba(255,255,255,0.1);
-}
-.leaderboard-list {
-width: 100%;
-max-width: 280px;
-background: #1e293b;
-border-radius: 16px;
-padding: 16px;
-margin-bottom: 20px;
-text-align: left;
-}
-.lb-item {
-display: flex;
-justify-content: space-between;
-padding: 8px 0;
-border-bottom: 1px solid rgba(255,255,255,0.05);
-font-size: 0.95rem;
-}
+#nickInput { width: 200px; padding: 12px; border-radius: 12px; border: none; background: #1e293b; color: white; font-size: 1.1rem; text-align: center; margin-bottom: 16px; outline: none; border: 1px solid rgba(255,255,255,0.1); }
+.leaderboard-list { width: 100%; max-width: 280px; background: #1e293b; border-radius: 16px; padding: 16px; margin-bottom: 20px; text-align: left; }
+.lb-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
 .lb-item:last-child { border-bottom: none; }
 .lb-item span:first-child { font-weight: 700; }
 .lb-item span:last-child { color: var(--accent-cyan); }
@@ -254,11 +96,11 @@ font-size: 0.95rem;
 <button id="goStart" class="btn menu-btn" style="background: var(--accent-green)">В путь!</button>
 <button id="goMarket" class="btn menu-btn" style="background: var(--accent-blue)">Гараж и Тюнинг</button>
 <button id="goLeaderboard" class="btn menu-btn" style="background: var(--accent-cyan)">🏆 Таблица лидеров</button>
-<button id="changeNickBtn" class="btn menu-btn" style="background: #475569; font-size: 0.9rem; margin-top: 8px;">🔄 Сменить ник</button>
+<button id="changeNickBtn" class="btn menu-btn" style="background: #475569; font-size: 0.9rem; margin-top: 8px;">🔄 Сменить аккаунт</button>
 </div>
 
 <div id="overlayLeaderboard" class="overlay hidden">
-<h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;"> Топ гонщиков</h2>
+<h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;">🏆 Топ гонщиков</h2>
 <div class="leaderboard-list" id="lbList">
 <div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>
 </div>
@@ -291,28 +133,18 @@ font-size: 0.95rem;
 </div>
 
 <script>
-// === ФИКС ЗУМА НА IPHONE ===
+// === ФИКС ЗУМА ===
 let lastTouchEnd = 0;
 document.addEventListener('touchend', (event) => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
-    }
+    if (now - lastTouchEnd <= 300) event.preventDefault();
     lastTouchEnd = now;
 }, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
-document.addEventListener('gesturestart', (e) => e.preventDefault());
-document.addEventListener('gesturechange', (e) => e.preventDefault());
-document.addEventListener('gestureend', (e) => e.preventDefault());
-
-// Отключаем масштабирование через pinch
-document.addEventListener('touchmove', (e) => {
-    if (e.touches.length > 1) {
-        e.preventDefault();
-    }
-}, { passive: false });
-
-// === ЗВУКОВОЙ ДВИЖОК ===
+// === ЗВУКИ ===
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const Sound = {
     play: (freq, type, duration, vol = 0.1) => {
@@ -323,10 +155,8 @@ const Sound = {
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
     },
     coin: () => { Sound.play(880, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1760, 'sine', 0.2, 0.1), 50); },
     crash: () => { Sound.play(150, 'sawtooth', 0.3, 0.2); Sound.play(100, 'square', 0.3, 0.2); },
@@ -348,12 +178,68 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// === ЛОГИКА НИКА ===
+// === СИСТЕМА АККАУНТОВ ===
+// Каждый игрок хранит свой прогресс под ключом "cg_save_Ник"
 let playerNick = localStorage.getItem('cg_nick') || '';
+let defaultSave = {
+    coins: 0, highScore: 0,
+    ownedCars: ['red'], activeCar: 'red',
+    ownedMaps: ['classic'], activeMap: 'classic',
+    upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
+};
+
+// Инициализация state
+let state = {
+    running: false, paused: false, score: 0, highScore: 0, coins: 0, speed: 4.0,
+    ownedCars: ['red'], activeCar: 'red', ownedMaps: ['classic'], activeMap: 'classic',
+    shieldCharge: 100, shieldActive: false, upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
+};
+
+// Загрузка прогресса конкретного игрока
+function loadAccountProgress(nick) {
+    try {
+        const saved = localStorage.getItem('cg_save_' + nick);
+        if (saved) {
+            const d = JSON.parse(saved);
+            state.coins = d.coins || 0;
+            state.highScore = d.highScore || 0;
+            state.ownedCars = d.ownedCars || ['red'];
+            state.activeCar = d.activeCar || 'red';
+            state.ownedMaps = d.ownedMaps || ['classic'];
+            state.activeMap = d.activeMap || 'classic';
+            state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
+        } else {
+            // Новый игрок — стартовый прогресс
+            state.coins = 0;
+            state.highScore = 0;
+            state.ownedCars = ['red'];
+            state.activeCar = 'red';
+            state.ownedMaps = ['classic'];
+            state.activeMap = 'classic';
+            state.upgrades = { magnet: 0, shield: 0, scoreMultiplier: 0 };
+        }
+    } catch(e) {}
+}
+
+// Сохранение прогресса текущего игрока
+function saveAccountProgress() {
+    try {
+        if (!playerNick) return;
+        localStorage.setItem('cg_save_' + playerNick, JSON.stringify({
+            coins: state.coins, highScore: state.highScore,
+            ownedCars: state.ownedCars, activeCar: state.activeCar,
+            ownedMaps: state.ownedMaps, activeMap: state.activeMap,
+            upgrades: state.upgrades
+        }));
+    } catch(e) {}
+}
+
+// Проверка ника при загрузке
 if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
     document.getElementById('overlayNick').classList.remove('hidden');
     document.getElementById('overlayMain').classList.add('hidden');
 } else {
+    loadAccountProgress(playerNick);
     document.getElementById('playerNickDisplay').textContent = playerNick;
     document.getElementById('overlayNick').classList.add('hidden');
     document.getElementById('overlayMain').classList.remove('hidden');
@@ -364,16 +250,20 @@ document.getElementById('saveNickBtn').onclick = () => {
     if (nick.length > 0 && nick !== 'Игрок') {
         playerNick = nick;
         localStorage.setItem('cg_nick', nick);
+        loadAccountProgress(nick); // Загружаем прогресс этого игрока
         document.getElementById('playerNickDisplay').textContent = nick;
+        refreshUI();
         show('overlayMain');
     } else {
         alert("Введи нормальный ник (не 'Игрок')!");
     }
 };
 
+// Смена аккаунта — сохраняем текущий и показываем экран ввода
 document.getElementById('changeNickBtn').onclick = () => {
-    localStorage.removeItem('cg_nick');
+    saveAccountProgress(); // Сохраняем прогресс текущего игрока
     playerNick = '';
+    localStorage.removeItem('cg_nick');
     document.getElementById('overlayMain').classList.add('hidden');
     document.getElementById('overlayNick').classList.remove('hidden');
     document.getElementById('nickInput').value = '';
@@ -383,13 +273,13 @@ document.getElementById('changeNickBtn').onclick = () => {
 document.getElementById('devBtn').onclick = () => {
     const code = prompt("🔑 Введите код:");
     if (code === "money") {
-        state.coins += 999999; saveProgress(); refreshUI(); Sound.buy();
-        alert("💰 +999,999 монет!");
+        state.coins += 999999; saveAccountProgress(); refreshUI(); Sound.buy();
+        alert("💰 +999,999 монет на этот аккаунт!");
     } else if (code === "clear") {
-        state.coins = 0; saveProgress(); refreshUI();
-        alert("🧹 Деньги очищены!");
+        state.coins = 0; saveAccountProgress(); refreshUI();
+        alert("🧹 Деньги на этом аккаунте очищены!");
     } else if (code === "cleartop") {
-        if (confirm("️ Очистить весь рейтинг?")) {
+        if (confirm("⚠️ Очистить весь глобальный рейтинг?")) {
             db.ref('leaderboard').remove().then(() => { alert("🏆 Рейтинг очищен!"); loadLeaderboard(); });
         }
     } else if (code !== null) {
@@ -419,11 +309,6 @@ function saveScoreToDB() {
 // === ИГРА ===
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let state = {
-    running: false, paused: false, score: 0, highScore: 0, coins: 0, speed: 4.0,
-    ownedCars: ['red'], activeCar: 'red', ownedMaps: ['classic'], activeMap: 'classic',
-    shieldCharge: 100, shieldActive: false, upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
-};
 const config = { carW: 42, carH: 72 };
 let world = { car: {x: 0, y: 0, dx: 0, targetDx: 0, tilt: 0}, obs: [], gold: [], lines: [], particles: [], sparks: [] };
 let dragging = false, dragOffsetX = 0, currentTab = 'cars', view = { w: 0, h: 0 };
@@ -446,11 +331,11 @@ const catalogMaps = [
 const catalogUpgrades = [
     { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота', max: 3, prices: [50, 120, 250], icon: '🧲' },
     { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '⚡' },
-    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '📈' }
+    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '' }
 ];
 
 function init() {
-    resize(); loadProgress(); refreshUI();
+    resize(); refreshUI();
     document.getElementById('goStart').onclick = () => { Sound.start(); play(); };
     document.getElementById('goMarket').onclick = () => { currentTab = 'cars'; show('overlayMarket'); };
     document.getElementById('retryBtn').onclick = () => { Sound.start(); play(); };
@@ -494,27 +379,13 @@ function init() {
     requestAnimationFrame(loop);
 }
 
-function saveProgress() {
-    try { localStorage.setItem('cg_deluxe_save_v3', JSON.stringify({ coins: state.coins, highScore: state.highScore, ownedCars: state.ownedCars, activeCar: state.activeCar, ownedMaps: state.ownedMaps, activeMap: state.activeMap, upgrades: state.upgrades })); } catch(e) {}
-}
-function loadProgress() {
-    try {
-        const saved = localStorage.getItem('cg_deluxe_save_v3');
-        if(saved) {
-            const d = JSON.parse(saved);
-            state.coins = d.coins || 0; state.highScore = d.highScore || 0;
-            state.ownedCars = d.ownedCars || ['red']; state.activeCar = d.activeCar || 'red';
-            state.ownedMaps = d.ownedMaps || ['classic']; state.activeMap = d.activeMap || 'classic';
-            state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
-        }
-    } catch(e) {}
-}
 function resize() {
     const dpr = window.devicePixelRatio || 1;
     view.w = canvas.clientWidth; view.h = canvas.clientHeight;
     canvas.width = view.w * dpr; canvas.height = view.h * dpr;
     ctx.scale(dpr, dpr);
 }
+
 function play() {
     state.running = true; state.paused = false; state.score = 0; state.speed = 4.0;
     state.shieldCharge = 100; state.shieldActive = false;
@@ -525,16 +396,19 @@ function play() {
     show(null);
     document.getElementById('pauseBtnToggle').style.display = 'block';
 }
+
 function pause() {
     if(!state.running) return;
     state.paused = !state.paused;
     document.getElementById('overlayPause').classList.toggle('hidden', !state.paused);
 }
+
 let lastSpawn = 0;
 function loop(t) {
     if(state.running && !state.paused) { update(t); render(); }
     requestAnimationFrame(loop);
 }
+
 function update(t) {
     const shieldRegenBase = 0.25, shieldBonus = state.upgrades.shield * 0.12;
     if(!state.shieldActive && state.shieldCharge < 100) {
@@ -589,7 +463,9 @@ function update(t) {
                 if(state.score > state.highScore) state.highScore = Math.floor(state.score);
                 document.getElementById('finalScoreVal').textContent = Math.floor(state.score);
                 document.getElementById('finalHighScoreVal').textContent = Math.floor(state.highScore);
-                saveProgress(); saveScoreToDB(); refreshUI();
+                saveAccountProgress();
+                saveScoreToDB();
+                refreshUI();
                 show('overlayOver');
             }
         }
@@ -727,7 +603,7 @@ function renderCatalog() {
             card.querySelector('button').onclick = () => {
                 if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedCars.push(item.id); Sound.buy(); } 
                 else if(isOwned) { state.activeCar = item.id; }
-                saveProgress(); refreshUI(); renderCatalog();
+                saveAccountProgress(); refreshUI(); renderCatalog();
             };
         });
     } else if(currentTab === 'maps') {
@@ -739,7 +615,7 @@ function renderCatalog() {
             card.querySelector('button').onclick = () => {
                 if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedMaps.push(item.id); Sound.buy(); } 
                 else if(isOwned) { state.activeMap = item.id; }
-                saveProgress(); refreshUI(); renderCatalog();
+                saveAccountProgress(); refreshUI(); renderCatalog();
             };
         });
     } else {
@@ -750,7 +626,7 @@ function renderCatalog() {
             card.innerHTML = `<div class="upgrade-icon-render">${item.icon}</div><div class="item-name">${item.n}</div><div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div><div class="item-price">${isMax ? 'Максимум' : price + ' 💰'}</div><button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>${isMax ? 'Изучено' : 'Улучшить'}</button>`;
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
-                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy(); saveProgress(); refreshUI(); renderCatalog(); }
+                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy(); saveAccountProgress(); refreshUI(); renderCatalog(); }
             };
         });
     }
