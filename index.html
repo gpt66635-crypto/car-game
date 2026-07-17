@@ -70,7 +70,13 @@ background: linear-gradient(180deg, #0ea5e9, #0369a1); box-shadow: 0 4px 0 #0759
 #pauseBtnToggle {
 position: absolute; top: 72px; right: 28px; z-index: 100; padding: 6px 14px;
 background: var(--accent-yellow); color: #1e293b; font-size: 0.85rem;
-border-radius: 8px; display: none;
+border-radius: 8px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+/* Секретная кнопка разработчика */
+#devBtn {
+position: absolute; top: 72px; left: 28px; z-index: 100; 
+padding: 8px 12px; background: #334155; font-size: 1.2rem;
+border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .overlay {
 position: absolute; bottom: 0; left: 0; right: 0; top: 56px;
@@ -129,7 +135,11 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <div style="color: var(--accent-yellow)">💰 <span id="coinVal">0</span></div>
 </div>
 <div id="boostBarWrap"><div id="boostBarFill"></div></div>
+
+<!-- Секретная кнопка разработчика -->
+<button id="devBtn" class="btn" title="Меню разработчика">🔑</button>
 <button id="pauseBtnToggle" class="btn">Пауза</button>
+
 <canvas id="gameCanvas"></canvas>
 <div class="controls">
 <button id="lBtn" class="btn btn-control">←</button>
@@ -137,7 +147,7 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button id="rBtn" class="btn btn-control">→</button>
 </div>
 
-<!-- Экран ввода Ника -->
+<!-- Экран ввода Ника (строгий) -->
 <div id="overlayNick" class="overlay">
 <h1 style="color: var(--accent-blue); margin: 0 0 16px 0; font-size: 1.8rem;">Car Game Deluxe</h1>
 <p style="font-size: 0.9rem; opacity: 0.7; margin: 0 0 24px 0;">Как тебя зовут, гонщик?</p>
@@ -205,24 +215,55 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- ЛОГИКА НИКА И ТАБЛИЦЫ ЛИДЕРОВ ---
+// --- ЛОГИКА НИКА (СТРОГАЯ) ---
 let playerNick = localStorage.getItem('cg_nick') || '';
-if(!playerNick) {
+// Если ника нет, или он пустой, или стандартный "Игрок" — показываем экран ввода
+if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
     document.getElementById('overlayNick').classList.remove('hidden');
+    document.getElementById('overlayMain').classList.add('hidden');
 } else {
     document.getElementById('playerNickDisplay').textContent = playerNick;
+    document.getElementById('overlayNick').classList.add('hidden');
 }
 
 document.getElementById('saveNickBtn').onclick = () => {
     const nick = document.getElementById('nickInput').value.trim();
-    if(nick.length > 0) {
+    if (nick.length > 0 && nick !== 'Игрок') {
         playerNick = nick;
         localStorage.setItem('cg_nick', nick);
         document.getElementById('playerNickDisplay').textContent = nick;
         show('overlayMain');
+    } else {
+        alert("Введи нормальный ник (не 'Игрок')!");
     }
 };
 
+// --- СЕКРЕТНОЕ МЕНЮ РАЗРАБОТЧИКА ---
+document.getElementById('devBtn').onclick = () => {
+    const code = prompt("Введите код разработчика:");
+    if (code === "money") {
+        state.coins += 999999;
+        saveProgress();
+        refreshUI();
+        alert("💰 Куча денег начислена на этот аккаунт!");
+    } else if (code === "clear") {
+        state.coins = 0;
+        saveProgress();
+        refreshUI();
+        alert("🧹 Деньги на этом аккаунте очищены!");
+    } else if (code === "cleartop") {
+        if (confirm("⚠️ Вы уверены, что хотите очистить ВЕСЬ глобальный рейтинг?")) {
+            db.ref('leaderboard').remove().then(() => {
+                alert("🏆 Глобальный рейтинг полностью очищен!");
+                loadLeaderboard(); // Обновить экран, если он открыт
+            }).catch(err => alert("Ошибка: " + err.message));
+        }
+    } else if (code !== null) {
+        alert("❌ Неверный код!");
+    }
+};
+
+// --- ТАБЛИЦА ЛИДЕРОВ ---
 document.getElementById('goLeaderboard').onclick = () => {
     show('overlayLeaderboard');
     loadLeaderboard();
@@ -231,10 +272,16 @@ document.getElementById('goLeaderboard').onclick = () => {
 function loadLeaderboard() {
     const list = document.getElementById('lbList');
     list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>';
+    
+    if (!db) {
+        list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ База данных не подключена</div>';
+        return;
+    }
+
     db.ref('leaderboard').orderByChild('highScore').limitToLast(10).on('value', (snapshot) => {
         const data = snapshot.val();
         if(!data) {
-            list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов</div>';
+            list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов. Сыграй первым!</div>';
             return;
         }
         const sorted = Object.values(data).sort((a, b) => b.highScore - a.highScore);
@@ -244,11 +291,18 @@ function loadLeaderboard() {
                 <span>${Math.floor(p.highScore)} pts</span>
             </div>
         `).join('');
+    }, (error) => {
+        console.error("Ошибка Firebase:", error);
+        list.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка:<br><small>${error.message}</small></div>`;
     });
 }
 
 function saveScoreToDB() {
-    if(!playerNick) return;
+    // СТРОГАЯ ПРОВЕРКА: не сохраняем, если ник пустой или "Игрок"
+    if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
+        console.log("Ник не введен, сохранение в таблицу лидеров отменено");
+        return;
+    }
     db.ref('leaderboard/' + playerNick).set({
         nick: playerNick,
         highScore: state.highScore,
