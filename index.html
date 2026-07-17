@@ -150,6 +150,7 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 <button id="goStart" class="btn menu-btn" style="background: var(--accent-green)">В путь!</button>
 <button id="goMarket" class="btn menu-btn" style="background: var(--accent-blue)">Гараж и Тюнинг</button>
 <button id="goLeaderboard" class="btn menu-btn" style="background: var(--accent-cyan)">🏆 Таблица лидеров</button>
+<button id="changeNickBtn" class="btn menu-btn" style="background: #475569; font-size: 0.9rem; margin-top: 8px;">🔄 Сменить ник</button>
 </div>
 
 <div id="overlayLeaderboard" class="overlay hidden">
@@ -186,6 +187,29 @@ border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem;
 </div>
 
 <script>
+// --- ЗВУКОВОЙ ДВИЖОК (Web Audio API - без внешних файлов!) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const Sound = {
+    play: (freq, type, duration, vol = 0.1) => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    },
+    coin: () => { Sound.play(880, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1760, 'sine', 0.2, 0.1), 50); },
+    crash: () => { Sound.play(150, 'sawtooth', 0.3, 0.2); Sound.play(100, 'square', 0.3, 0.2); },
+    buy: () => { Sound.play(523, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(659, 'sine', 0.1, 0.1), 100); setTimeout(() => Sound.play(784, 'sine', 0.2, 0.1), 200); },
+    start: () => { Sound.play(440, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(880, 'sine', 0.3, 0.1), 100); },
+    shield: () => { Sound.play(600, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1200, 'sine', 0.4, 0.1), 50); }
+};
+
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
   apiKey: "AIzaSyCPftDz55A0ER5IDA9PCpV_h7yLAiWgIQI",
@@ -207,7 +231,7 @@ if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
 } else {
     document.getElementById('playerNickDisplay').textContent = playerNick;
     document.getElementById('overlayNick').classList.add('hidden');
-    document.getElementById('overlayMain').classList.remove('hidden'); // ИСПРАВЛЕНО: показываем меню!
+    document.getElementById('overlayMain').classList.remove('hidden');
 }
 
 document.getElementById('saveNickBtn').onclick = () => {
@@ -222,67 +246,50 @@ document.getElementById('saveNickBtn').onclick = () => {
     }
 };
 
+// Кнопка смены ника
+document.getElementById('changeNickBtn').onclick = () => {
+    localStorage.removeItem('cg_nick');
+    playerNick = '';
+    document.getElementById('overlayMain').classList.add('hidden');
+    document.getElementById('overlayNick').classList.remove('hidden');
+    document.getElementById('nickInput').value = '';
+};
+
 // --- СЕКРЕТНОЕ МЕНЮ ---
 document.getElementById('devBtn').onclick = () => {
     const code = prompt("🔑 Введите код:");
     if (code === "money") {
-        state.coins += 999999;
-        saveProgress();
-        refreshUI();
+        state.coins += 999999; saveProgress(); refreshUI(); Sound.buy();
         alert("💰 +999,999 монет!");
     } else if (code === "clear") {
-        state.coins = 0;
-        saveProgress();
-        refreshUI();
+        state.coins = 0; saveProgress(); refreshUI();
         alert("🧹 Деньги очищены!");
     } else if (code === "cleartop") {
-        if (confirm("️ Очистить весь рейтинг?")) {
-            db.ref('leaderboard').remove().then(() => {
-                alert("🏆 Рейтинг очищен!");
-                loadLeaderboard();
-            });
+        if (confirm("⚠️ Очистить весь рейтинг?")) {
+            db.ref('leaderboard').remove().then(() => { alert("🏆 Рейтинг очищен!"); loadLeaderboard(); });
         }
     } else if (code !== null) {
         alert("❌ Неверный код!");
     }
 };
 
-document.getElementById('goLeaderboard').onclick = () => {
-    show('overlayLeaderboard');
-    loadLeaderboard();
-};
+document.getElementById('goLeaderboard').onclick = () => { show('overlayLeaderboard'); loadLeaderboard(); };
 
 function loadLeaderboard() {
     const list = document.getElementById('lbList');
     list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>';
-    if (!db) {
-        list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка базы</div>';
-        return;
-    }
+    if (!db) { list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка базы</div>'; return; }
     db.ref('leaderboard').orderByChild('highScore').limitToLast(10).on('value', (snapshot) => {
         const data = snapshot.val();
-        if(!data) {
-            list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов</div>';
-            return;
-        }
+        if(!data) { list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов</div>'; return; }
         const sorted = Object.values(data).sort((a, b) => b.highScore - a.highScore);
-        list.innerHTML = sorted.map((p, i) => `
-            <div class="lb-item">
-                <span>${i+1}. ${p.nick}</span>
-                <span>${Math.floor(p.highScore)} pts</span>
-            </div>
-        `).join('');
+        list.innerHTML = sorted.map((p, i) => `<div class="lb-item"><span>${i+1}. ${p.nick}</span><span>${Math.floor(p.highScore)} pts</span></div>`).join('');
     });
 }
 
 function saveScoreToDB() {
     if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') return;
-    db.ref('leaderboard/' + playerNick).set({
-        nick: playerNick,
-        highScore: state.highScore,
-        coins: state.coins,
-        lastPlay: Date.now()
-    });
+    db.ref('leaderboard/' + playerNick).set({ nick: playerNick, highScore: state.highScore, coins: state.coins, lastPlay: Date.now() });
 }
 
 // --- ИГРА ---
@@ -314,15 +321,15 @@ const catalogMaps = [
 ];
 const catalogUpgrades = [
     { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота', max: 3, prices: [50, 120, 250], icon: '🧲' },
-    { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '' },
+    { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '⚡' },
     { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '📈' }
 ];
 
 function init() {
     resize(); loadProgress(); refreshUI();
-    document.getElementById('goStart').onclick = play;
+    document.getElementById('goStart').onclick = () => { Sound.start(); play(); };
     document.getElementById('goMarket').onclick = () => { currentTab = 'cars'; show('overlayMarket'); };
-    document.getElementById('retryBtn').onclick = play;
+    document.getElementById('retryBtn').onclick = () => { Sound.start(); play(); };
     document.getElementById('resumeBtn').onclick = pause;
     document.getElementById('pauseBtnToggle').onclick = pause;
     document.getElementById('tabCars').onclick = () => { currentTab = 'cars'; switchTab(); };
@@ -338,7 +345,7 @@ function init() {
     
     document.getElementById('shieldBtn').onclick = () => {
         if(state.shieldCharge >= 100 && state.running && !state.paused && !state.shieldActive) {
-            state.shieldActive = true; state.shieldCharge = 0;
+            state.shieldActive = true; state.shieldCharge = 0; Sound.shield();
         }
     };
     canvas.addEventListener('pointerdown', (e) => {
@@ -364,14 +371,8 @@ function init() {
 }
 
 function saveProgress() {
-    try {
-        localStorage.setItem('cg_deluxe_save_v3', JSON.stringify({
-            coins: state.coins, highScore: state.highScore, ownedCars: state.ownedCars,
-            activeCar: state.activeCar, ownedMaps: state.ownedMaps, activeMap: state.activeMap, upgrades: state.upgrades
-        }));
-    } catch(e) {}
+    try { localStorage.setItem('cg_deluxe_save_v3', JSON.stringify({ coins: state.coins, highScore: state.highScore, ownedCars: state.ownedCars, activeCar: state.activeCar, ownedMaps: state.ownedMaps, activeMap: state.activeMap, upgrades: state.upgrades })); } catch(e) {}
 }
-
 function loadProgress() {
     try {
         const saved = localStorage.getItem('cg_deluxe_save_v3');
@@ -384,14 +385,12 @@ function loadProgress() {
         }
     } catch(e) {}
 }
-
 function resize() {
     const dpr = window.devicePixelRatio || 1;
     view.w = canvas.clientWidth; view.h = canvas.clientHeight;
     canvas.width = view.w * dpr; canvas.height = view.h * dpr;
     ctx.scale(dpr, dpr);
 }
-
 function play() {
     state.running = true; state.paused = false; state.score = 0; state.speed = 4.0;
     state.shieldCharge = 100; state.shieldActive = false;
@@ -402,19 +401,16 @@ function play() {
     show(null);
     document.getElementById('pauseBtnToggle').style.display = 'block';
 }
-
 function pause() {
     if(!state.running) return;
     state.paused = !state.paused;
     document.getElementById('overlayPause').classList.toggle('hidden', !state.paused);
 }
-
 let lastSpawn = 0;
 function loop(t) {
     if(state.running && !state.paused) { update(t); render(); }
     requestAnimationFrame(loop);
 }
-
 function update(t) {
     const shieldRegenBase = 0.25, shieldBonus = state.upgrades.shield * 0.12;
     if(!state.shieldActive && state.shieldCharge < 100) {
@@ -422,8 +418,7 @@ function update(t) {
     }
     const fill = document.getElementById('boostBarFill');
     fill.style.width = state.shieldCharge + '%';
-    fill.style.background = state.shieldActive ? 'linear-gradient(90deg, #c084fc, #f43f5e)' : 
-                           (state.shieldCharge >= 100 ? 'linear-gradient(90deg, #38bdf8, #34d399)' : 'linear-gradient(90deg, #3b82f6, #06b6d4)');
+    fill.style.background = state.shieldActive ? 'linear-gradient(90deg, #c084fc, #f43f5e)' : (state.shieldCharge >= 100 ? 'linear-gradient(90deg, #38bdf8, #34d399)' : 'linear-gradient(90deg, #3b82f6, #06b6d4)');
 
     world.car.dx += (world.car.targetDx - world.car.dx) * 0.25;
     world.car.x += world.car.dx;
@@ -462,17 +457,15 @@ function update(t) {
         o.y += state.speed * 1.25;
         if(hit(world.car, config.carW, config.carH, o, o.w, o.h)) {
             if(state.shieldActive) {
-                state.shieldActive = false; world.obs.splice(index, 1);
+                state.shieldActive = false; world.obs.splice(index, 1); Sound.crash();
                 for(let k=0; k<12; k++) world.sparks.push({x: o.x + 20, y: o.y + 36, a: Math.random()*Math.PI*2, life: 1, c: '#06b6d4'});
             } else {
-                state.running = false;
+                state.running = false; Sound.crash();
                 document.getElementById('pauseBtnToggle').style.display = 'none';
                 if(state.score > state.highScore) state.highScore = Math.floor(state.score);
                 document.getElementById('finalScoreVal').textContent = Math.floor(state.score);
                 document.getElementById('finalHighScoreVal').textContent = Math.floor(state.highScore);
-                saveProgress();
-                saveScoreToDB();
-                refreshUI();
+                saveProgress(); saveScoreToDB(); refreshUI();
                 show('overlayOver');
             }
         }
@@ -483,7 +476,7 @@ function update(t) {
         if (g.y < view.h) g.y += state.speed * 0.95;
         g.spin += 0.15;
         if(hit(world.car, config.carW, config.carH, g, g.w, g.h)) {
-            state.coins += 5; state.score += 10; world.gold.splice(i, 1);
+            state.coins += 5; state.score += 10; world.gold.splice(i, 1); Sound.coin();
             for(let k=0; k<6; k++) world.sparks.push({x: g.x+13, y: g.y+13, a: Math.random()*Math.PI*2, life: 1, c: '#fbbf24'});
             refreshUI();
         }
@@ -510,10 +503,7 @@ function render() {
     ctx.fillStyle = map.line;
     world.lines.forEach(y => { ctx.fillRect(view.w/2 - 3, y, 6, 40); });
 
-    world.particles.forEach(p => {
-        ctx.globalAlpha = p.life * 0.4; ctx.fillStyle = '#94a3b8';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
-    });
+    world.particles.forEach(p => { ctx.globalAlpha = p.life * 0.4; ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); });
     ctx.globalAlpha = 1;
 
     world.obs.forEach(o => {
@@ -533,10 +523,7 @@ function render() {
         ctx.restore();
     });
 
-    world.sparks.forEach(s => {
-        ctx.globalAlpha = s.life; ctx.fillStyle = s.c;
-        ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 7); ctx.fill();
-    });
+    world.sparks.forEach(s => { ctx.globalAlpha = s.life; ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 7); ctx.fill(); });
     ctx.globalAlpha = 1;
 
     ctx.save();
@@ -586,42 +573,35 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-
-function hit(a, aw, ah, b, bw, bh) {
-    return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
-}
-
+function hit(a, aw, ah, b, bw, bh) { return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; }
 function show(id) {
     document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
     if(id) document.getElementById(id).classList.remove('hidden');
     if(id === 'overlayMarket') renderCatalog();
 }
-
 function switchTab() {
     document.getElementById('tabCars').classList.toggle('active', currentTab === 'cars');
     document.getElementById('tabMaps').classList.toggle('active', currentTab === 'maps');
     document.getElementById('tabUpgrades').classList.toggle('active', currentTab === 'upgrades');
     renderCatalog();
 }
-
 function refreshUI() {
     document.getElementById('coinVal').textContent = state.coins;
     document.getElementById('highScoreVal').textContent = Math.floor(state.highScore);
 }
-
 function renderCatalog() {
     const grid = document.getElementById('marketList'); grid.innerHTML = '';
     if(currentTab === 'cars') {
         catalogCars.forEach(item => {
             const isOwned = state.ownedCars.includes(item.id), isActive = state.activeCar === item.id;
             const card = document.createElement('div'); card.className = 'market-item';
-            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' '}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
+            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
             grid.appendChild(card);
             const pCanv = document.createElement('canvas'); pCanv.width = 40; pCanv.height = 55;
             drawCarModel(pCanv.getContext('2d'), item.type, item.c);
             document.getElementById(`prev_${item.id}`).appendChild(pCanv);
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedCars.push(item.id); } 
+                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedCars.push(item.id); Sound.buy(); } 
                 else if(isOwned) { state.activeCar = item.id; }
                 saveProgress(); refreshUI(); renderCatalog();
             };
@@ -633,7 +613,7 @@ function renderCatalog() {
             card.innerHTML = `<div class="map-preview-render" style="background:linear-gradient(140deg, ${item.bg1}, ${item.bg2})"></div><div class="item-name">${item.n}</div><div class="item-desc">Уникальный трек</div><div class="item-price">${isOwned ? 'Доступна' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Активна' : isOwned ? 'Выбрать' : 'Открыть'}</button>`;
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedMaps.push(item.id); } 
+                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedMaps.push(item.id); Sound.buy(); } 
                 else if(isOwned) { state.activeMap = item.id; }
                 saveProgress(); refreshUI(); renderCatalog();
             };
@@ -646,12 +626,11 @@ function renderCatalog() {
             card.innerHTML = `<div class="upgrade-icon-render">${item.icon}</div><div class="item-name">${item.n}</div><div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div><div class="item-price">${isMax ? 'Максимум' : price + ' 💰'}</div><button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>${isMax ? 'Изучено' : 'Улучшить'}</button>`;
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
-                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; saveProgress(); refreshUI(); renderCatalog(); }
+                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy(); saveProgress(); refreshUI(); renderCatalog(); }
             };
         });
     }
 }
-
 window.onresize = () => { resize(); if(!state.running) render(); };
 init();
 </script>
