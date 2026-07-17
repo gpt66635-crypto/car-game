@@ -3,21 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Car Game Deluxe 2.0</title>
+<title>Car Game Deluxe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root {
---bg-dark: #0b0f19;
---panel-dark: #131a26;
---road-grey: #2c313c;
---accent-blue: #3b82f6;
---accent-green: #10b981;
---accent-red: #ef4444;
---accent-yellow: #f59e0b;
---accent-cyan: #06b6d4;
---text-white: #f8fafc;
+--bg-dark: #0b0f19; --panel-dark: #131a26; --road-grey: #2c313c;
+--accent-blue: #3b82f6; --accent-green: #10b981; --accent-red: #ef4444;
+--accent-yellow: #f59e0b; --accent-cyan: #06b6d4; --text-white: #f8fafc;
 --game-font: 'Plus Jakarta Sans', -apple-system, sans-serif;
 }
 * {
@@ -96,12 +93,7 @@ display: block;
 touch-action: none;
 box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
-.controls {
-display: flex;
-width: 100%;
-gap: 12px;
-margin-top: 14px;
-}
+.controls { display: flex; width: 100%; gap: 12px; margin-top: 14px; }
 .btn {
 border: none;
 border-radius: 14px;
@@ -122,25 +114,24 @@ font-size: 1.8rem;
 background: linear-gradient(180deg, #3b82f6, #1d4ed8);
 box-shadow: 0 4px 0 #1e40af;
 }
-#abilityBtn {
+#shieldBtn {
 flex: 1.4;
 height: 60px;
 font-size: 0.95rem;
-background: linear-gradient(180deg, #f59e0b, #d97706);
-box-shadow: 0 4px 0 #b45309;
+background: linear-gradient(180deg, #0ea5e9, #0369a1);
+box-shadow: 0 4px 0 #075985;
 }
-#pauseBtnToggle {
+#pauseBtnToggle, #devBtn {
 position: absolute;
 top: 72px;
-right: 28px;
 z-index: 100;
-padding: 6px 14px;
-background: var(--accent-yellow);
-color: #1e293b;
-font-size: 0.85rem;
+padding: 8px 12px;
+font-size: 1.2rem;
 border-radius: 8px;
-display: none;
+box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
+#pauseBtnToggle { right: 28px; background: var(--accent-yellow); color: #1e293b; display: none; }
+#devBtn { left: 28px; background: #334155; }
 .overlay {
 position: absolute;
 bottom: 0;
@@ -159,19 +150,8 @@ z-index: 50;
 text-align: center;
 }
 .hidden { display: none !important; }
-.menu-btn {
-width: 240px;
-padding: 14px;
-margin-bottom: 12px;
-font-size: 1.05rem;
-box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-.market-tabs {
-display: flex;
-gap: 6px;
-width: 100%;
-margin-bottom: 12px;
-}
+.menu-btn { width: 240px; padding: 14px; margin-bottom: 12px; font-size: 1.05rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.market-tabs { display: flex; gap: 6px; width: 100%; margin-bottom: 12px; }
 .tab-btn {
 flex: 1;
 padding: 10px 4px;
@@ -183,11 +163,7 @@ font-weight: 700;
 font-family: inherit;
 font-size: 0.85rem;
 }
-.tab-btn.active {
-background: var(--accent-blue);
-color: white;
-border-color: var(--accent-blue);
-}
+.tab-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
 .market-grid {
 display: grid;
 grid-template-columns: repeat(2, 1fr);
@@ -207,29 +183,45 @@ flex-direction: column;
 align-items: center;
 border: 1px solid rgba(255,255,255,0.04);
 }
-.car-preview-render {
-width: 50px;
-height: 65px;
-margin-bottom: 6px;
-}
-.map-preview-render {
-width: 64px;
-height: 42px;
-border-radius: 6px;
-margin-bottom: 6px;
-border: 1px solid rgba(255,255,255,0.15);
-}
-.upgrade-icon-render {
-font-size: 1.8rem;
-margin-bottom: 6px;
-height: 55px;
-display: flex;
-align-items: center;
-}
+.car-preview-render { width: 40px; height: 55px; margin-bottom: 6px; }
+.map-preview-render { width: 64px; height: 42px; border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.15); }
+.upgrade-icon-render { font-size: 1.8rem; margin-bottom: 6px; height: 55px; display: flex; align-items: center; }
 .item-name { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; text-align: center; }
 .item-desc { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; text-align: center; min-height: 24px; }
 .item-price { font-size: 0.85rem; color: var(--accent-yellow); margin-bottom: 6px; font-weight: 700; }
 .buy-btn { width: 100%; padding: 8px; font-size: 0.8rem; }
+#nickInput {
+width: 200px;
+padding: 12px;
+border-radius: 12px;
+border: none;
+background: #1e293b;
+color: white;
+font-size: 1.1rem;
+text-align: center;
+margin-bottom: 16px;
+outline: none;
+border: 1px solid rgba(255,255,255,0.1);
+}
+.leaderboard-list {
+width: 100%;
+max-width: 280px;
+background: #1e293b;
+border-radius: 16px;
+padding: 16px;
+margin-bottom: 20px;
+text-align: left;
+}
+.lb-item {
+display: flex;
+justify-content: space-between;
+padding: 8px 0;
+border-bottom: 1px solid rgba(255,255,255,0.05);
+font-size: 0.95rem;
+}
+.lb-item:last-child { border-bottom: none; }
+.lb-item span:first-child { font-weight: 700; }
+.lb-item span:last-child { color: var(--accent-cyan); }
 </style>
 </head>
 <body>
@@ -240,26 +232,44 @@ align-items: center;
 <div style="color: var(--accent-yellow)">💰 <span id="coinVal">0</span></div>
 </div>
 <div id="boostBarWrap"><div id="boostBarFill"></div></div>
+<button id="devBtn" class="btn" title="Меню разработчика">🔑</button>
 <button id="pauseBtnToggle" class="btn">Пауза</button>
 <canvas id="gameCanvas"></canvas>
 <div class="controls">
 <button id="lBtn" class="btn btn-control">←</button>
-<button id="abilityBtn" class="btn">⚡ СПОСОБНОСТЬ</button>
+<button id="shieldBtn" class="btn">️ ЩИТ</button>
 <button id="rBtn" class="btn btn-control">→</button>
 </div>
 
-<div id="overlayMain" class="overlay">
-<h1 style="color: var(--accent-blue); margin: 0 0 4px 0; font-size: 1.8rem;">Car Game Deluxe 2.0</h1>
-<p style="font-size: 0.85rem; opacity: 0.6; margin: 0 0 24px 0;">Новые машины, фоны и способности!</p>
+<div id="overlayNick" class="overlay">
+<h1 style="color: var(--accent-blue); margin: 0 0 16px 0; font-size: 1.8rem;">Car Game Deluxe</h1>
+<p style="font-size: 0.9rem; opacity: 0.7; margin: 0 0 24px 0;">Как тебя зовут, гонщик?</p>
+<input type="text" id="nickInput" placeholder="Твой ник" maxlength="12">
+<button id="saveNickBtn" class="btn menu-btn" style="background: var(--accent-green)">Погнали!</button>
+</div>
+
+<div id="overlayMain" class="overlay hidden">
+<h1 style="color: var(--accent-blue); margin: 0 0 4px 0; font-size: 1.8rem;">Привет, <span id="playerNickDisplay">Игрок</span>!</h1>
+<p style="font-size: 0.85rem; opacity: 0.6; margin: 0 0 24px 0;">Управляй кнопками или тяни пальцем!</p>
 <button id="goStart" class="btn menu-btn" style="background: var(--accent-green)">В путь!</button>
 <button id="goMarket" class="btn menu-btn" style="background: var(--accent-blue)">Гараж и Тюнинг</button>
+<button id="goLeaderboard" class="btn menu-btn" style="background: var(--accent-cyan)">🏆 Таблица лидеров</button>
+<button id="changeNickBtn" class="btn menu-btn" style="background: #475569; font-size: 0.9rem; margin-top: 8px;">🔄 Сменить ник</button>
+</div>
+
+<div id="overlayLeaderboard" class="overlay hidden">
+<h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;"> Топ гонщиков</h2>
+<div class="leaderboard-list" id="lbList">
+<div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>
+</div>
+<button class="btn menu-btn" style="background: var(--accent-red)" onclick="show('overlayMain')">Назад</button>
 </div>
 
 <div id="overlayMarket" class="overlay hidden">
 <div class="market-tabs">
-<button id="tabCars" class="tab-btn active">🚗 Машины</button>
-<button id="tabMaps" class="tab-btn"> Локации</button>
-<button id="tabUpgrades" class="tab-btn"> Прокачка</button>
+<button id="tabCars" class="tab-btn active">Машины</button>
+<button id="tabMaps" class="tab-btn">Трассы</button>
+<button id="tabUpgrades" class="tab-btn">Прокачка</button>
 </div>
 <div class="market-grid" id="marketList"></div>
 <button class="btn back-to-menu" style="background: var(--accent-red); padding: 10px 42px;">В меню</button>
@@ -281,146 +291,174 @@ align-items: center;
 </div>
 
 <script>
-// Блокировка двойного тапа
+// === ФИКС ЗУМА НА IPHONE ===
 let lastTouchEnd = 0;
-document.addEventListener('touchend', (e) => {
+document.addEventListener('touchend', (event) => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
+    if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
     lastTouchEnd = now;
-}, false);
-document.addEventListener('gesturestart', e => e.preventDefault());
-document.addEventListener('gesturechange', e => e.preventDefault());
+}, { passive: false });
 
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('gesturechange', (e) => e.preventDefault());
+document.addEventListener('gestureend', (e) => e.preventDefault());
+
+// Отключаем масштабирование через pinch
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// === ЗВУКОВОЙ ДВИЖОК ===
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const Sound = {
+    play: (freq, type, duration, vol = 0.1) => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    },
+    coin: () => { Sound.play(880, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1760, 'sine', 0.2, 0.1), 50); },
+    crash: () => { Sound.play(150, 'sawtooth', 0.3, 0.2); Sound.play(100, 'square', 0.3, 0.2); },
+    buy: () => { Sound.play(523, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(659, 'sine', 0.1, 0.1), 100); setTimeout(() => Sound.play(784, 'sine', 0.2, 0.1), 200); },
+    start: () => { Sound.play(440, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(880, 'sine', 0.3, 0.1), 100); },
+    shield: () => { Sound.play(600, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1200, 'sine', 0.4, 0.1), 50); }
+};
+
+// === FIREBASE ===
+const firebaseConfig = {
+  apiKey: "AIzaSyCPftDz55A0ER5IDA9PCpV_h7yLAiWgIQI",
+  authDomain: "cargeme-da98c.firebaseapp.com",
+  databaseURL: "https://cargeme-da98c-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "cargeme-da98c",
+  storageBucket: "cargeme-da98c.firebasestorage.app",
+  messagingSenderId: "75859968680",
+  appId: "1:75859968680:web:4b087868592b9ee85ef89d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// === ЛОГИКА НИКА ===
+let playerNick = localStorage.getItem('cg_nick') || '';
+if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
+    document.getElementById('overlayNick').classList.remove('hidden');
+    document.getElementById('overlayMain').classList.add('hidden');
+} else {
+    document.getElementById('playerNickDisplay').textContent = playerNick;
+    document.getElementById('overlayNick').classList.add('hidden');
+    document.getElementById('overlayMain').classList.remove('hidden');
+}
+
+document.getElementById('saveNickBtn').onclick = () => {
+    const nick = document.getElementById('nickInput').value.trim();
+    if (nick.length > 0 && nick !== 'Игрок') {
+        playerNick = nick;
+        localStorage.setItem('cg_nick', nick);
+        document.getElementById('playerNickDisplay').textContent = nick;
+        show('overlayMain');
+    } else {
+        alert("Введи нормальный ник (не 'Игрок')!");
+    }
+};
+
+document.getElementById('changeNickBtn').onclick = () => {
+    localStorage.removeItem('cg_nick');
+    playerNick = '';
+    document.getElementById('overlayMain').classList.add('hidden');
+    document.getElementById('overlayNick').classList.remove('hidden');
+    document.getElementById('nickInput').value = '';
+};
+
+// === СЕКРЕТНОЕ МЕНЮ ===
+document.getElementById('devBtn').onclick = () => {
+    const code = prompt("🔑 Введите код:");
+    if (code === "money") {
+        state.coins += 999999; saveProgress(); refreshUI(); Sound.buy();
+        alert("💰 +999,999 монет!");
+    } else if (code === "clear") {
+        state.coins = 0; saveProgress(); refreshUI();
+        alert("🧹 Деньги очищены!");
+    } else if (code === "cleartop") {
+        if (confirm("️ Очистить весь рейтинг?")) {
+            db.ref('leaderboard').remove().then(() => { alert("🏆 Рейтинг очищен!"); loadLeaderboard(); });
+        }
+    } else if (code !== null) {
+        alert("❌ Неверный код!");
+    }
+};
+
+document.getElementById('goLeaderboard').onclick = () => { show('overlayLeaderboard'); loadLeaderboard(); };
+
+function loadLeaderboard() {
+    const list = document.getElementById('lbList');
+    list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>';
+    if (!db) { list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">❌ Ошибка базы</div>'; return; }
+    db.ref('leaderboard').orderByChild('highScore').limitToLast(10).on('value', (snapshot) => {
+        const data = snapshot.val();
+        if(!data) { list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px">Пока нет рекордов</div>'; return; }
+        const sorted = Object.values(data).sort((a, b) => b.highScore - a.highScore);
+        list.innerHTML = sorted.map((p, i) => `<div class="lb-item"><span>${i+1}. ${p.nick}</span><span>${Math.floor(p.highScore)} pts</span></div>`).join('');
+    });
+}
+
+function saveScoreToDB() {
+    if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') return;
+    db.ref('leaderboard/' + playerNick).set({ nick: playerNick, highScore: state.highScore, coins: state.coins, lastPlay: Date.now() });
+}
+
+// === ИГРА ===
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let state = {
-    running: false,
-    paused: false,
-    score: 0,
-    highScore: 0,
-    coins: 0,
-    speed: 3.5,
-    ownedCars: ['sedan'],
-    activeCar: 'sedan',
-    ownedMaps: ['field'],
-    activeMap: 'field',
-    abilityCharge: 100,
-    abilityActive: false,
-    upgrades: { speed: 0, magnet: 0, coinBonus: 0 }
+    running: false, paused: false, score: 0, highScore: 0, coins: 0, speed: 4.0,
+    ownedCars: ['red'], activeCar: 'red', ownedMaps: ['classic'], activeMap: 'classic',
+    shieldCharge: 100, shieldActive: false, upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
 };
 const config = { carW: 42, carH: 72 };
-let world = { 
-    car: {x: 0, y: 0, dx: 0, targetDx: 0, tilt: 0}, 
-    obs: [], 
-    gold: [], 
-    lines: [], 
-    particles: [], 
-    sparks: [],
-    clouds: [],
-    scenery: []
-};
-let dragging = false, dragOffsetX = 0, currentTab = 'cars';
-let view = { w: 0, h: 0 };
-let abilityTimeout = null;
+let world = { car: {x: 0, y: 0, dx: 0, targetDx: 0, tilt: 0}, obs: [], gold: [], lines: [], particles: [], sparks: [] };
+let dragging = false, dragOffsetX = 0, currentTab = 'cars', view = { w: 0, h: 0 };
 
-// РАЗНЫЕ ТИПЫ МАШИН
 const catalogCars = [
-    { id: 'sedan', n: 'Седан', p: 0, type: 'sedan', color: '#3b82f6', speed: 1, desc: 'Обычная машина' },
-    { id: 'truck', n: 'Фура', p: 100, type: 'truck', color: '#ef4444', speed: 0.8, desc: 'Медленная, но мощная' },
-    { id: 'formula', n: 'Формула 1', p: 250, type: 'formula', color: '#f59e0b', speed: 1.3, desc: 'Скорость чемпиона' },
-    { id: 'pickup', n: 'Пикап', p: 150, type: 'pickup', color: '#10b981', speed: 0.95, desc: 'Внедорожник' },
-    { id: 'tesla', n: 'Tesla', p: 350, type: 'tesla', color: '#8b5cf6', speed: 1.2, desc: 'Электро-кар' },
-    { id: 'sport', n: 'Спорткар', p: 200, type: 'sport', color: '#ec4899', speed: 1.15, desc: 'Спортивный стиль' },
-    { id: 'taxi', n: 'Такси', p: 80, type: 'taxi', color: '#fbbf24', speed: 1, desc: 'Жёлтое такси' },
-    { id: 'police', n: 'Полиция', p: 180, type: 'police', color: '#1e3a8a', speed: 1.1, desc: 'Патрульная машина' }
+    { id: 'red', c: '#e74c3c', p: 0, n: 'Круизер', type: 'sedan' },
+    { id: 'blue', c: '#3498db', p: 60, n: 'Спорт Апекс', type: 'sport' },
+    { id: 'green', c: '#2ecc71', p: 140, n: 'Носорог SUV', type: 'truck' },
+    { id: 'cyber', c: '#95a5a6', p: 250, n: 'Кибер Трак', type: 'cyber' },
+    { id: 'neon', c: '#a855f7', p: 450, n: 'Неон Вайпер', type: 'sport' },
+    { id: 'gold', c: '#f59e0b', p: 800, n: 'Гипер Голд', type: 'cyber' }
 ];
-
-// ЛОКАЦИИ С ФОНАМИ
 const catalogMaps = [
-    { 
-        id: 'field', 
-        n: 'Поле', 
-        p: 0, 
-        roadColor: '#374151', 
-        lineColor: '#ffffff',
-        bgLeft: '#86efac', 
-        bgRight: '#4ade80',
-        cloudColor: 'rgba(255,255,255,0.6)',
-        sceneryType: 'corn',
-        desc: 'Кукурузное поле'
-    },
-    { 
-        id: 'forest', 
-        n: 'Лес', 
-        p: 120, 
-        roadColor: '#1f2937', 
-        lineColor: '#fbbf24',
-        bgLeft: '#14532d', 
-        bgRight: '#166534',
-        cloudColor: 'rgba(255,255,255,0.4)',
-        sceneryType: 'trees',
-        desc: 'Тёмный лес'
-    },
-    { 
-        id: 'city', 
-        n: 'Город', 
-        p: 200, 
-        roadColor: '#111827', 
-        lineColor: '#fbbf24',
-        bgLeft: '#374151', 
-        bgRight: '#4b5563',
-        cloudColor: 'rgba(200,200,200,0.3)',
-        sceneryType: 'buildings',
-        desc: 'Городские улицы'
-    },
-    { 
-        id: 'desert', 
-        n: 'Пустыня', 
-        p: 150, 
-        roadColor: '#4b5563', 
-        lineColor: '#ffffff',
-        bgLeft: '#fcd34d', 
-        bgRight: '#f59e0b',
-        cloudColor: 'rgba(255,255,200,0.5)',
-        sceneryType: 'cactus',
-        desc: 'Жаркая пустыня'
-    },
-    { 
-        id: 'highway', 
-        n: 'Шоссе', 
-        p: 180, 
-        roadColor: '#374151', 
-        lineColor: '#ffffff',
-        bgLeft: '#60a5fa', 
-        bgRight: '#93c5fd',
-        cloudColor: 'rgba(255,255,255,0.7)',
-        sceneryType: 'mountains',
-        desc: 'Скоростное шоссе'
-    }
+    { id: 'classic', n: 'Чистый Асфальт', p: 0, bg1: '#1e2530', bg2: '#111622', line: '#ffffff', side: '#4b5563' },
+    { id: 'tokyo', n: 'Ночной Токио', p: 80, bg1: '#11101b', bg2: '#07060b', line: '#38bdf8', side: '#1e1b4b' },
+    { id: 'desert', n: 'Каньон Ран', p: 160, bg1: '#cc8b45', bg2: '#a8692a', line: '#ffffff', side: '#78350f' },
+    { id: 'cyberpunk', n: 'Неоновый Пульс', p: 300, bg1: '#1e112a', bg2: '#0f0516', line: '#f43f5e', side: '#4c1d95' },
+    { id: 'lava', n: 'Адский Трек', p: 500, bg1: '#2d0f0f', bg2: '#180505', line: '#f97316', side: '#7c2d12' }
 ];
-
-// ПРОКАЧКА (сбалансированная)
 const catalogUpgrades = [
-    { id: 'speed', n: 'Скорость', d: 'Увеличивает макс. скорость', max: 5, prices: [100, 200, 400, 800, 1500], icon: '' },
-    { id: 'magnet', n: 'Магнит', d: 'Притягивает монеты', max: 3, prices: [150, 300, 600], icon: '🧲' },
-    { id: 'coinBonus', n: 'Бонус', d: '+монет за сбор', max: 3, prices: [120, 250, 500], icon: '' }
+    { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота', max: 3, prices: [50, 120, 250], icon: '🧲' },
+    { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '⚡' },
+    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '📈' }
 ];
 
 function init() {
-    resize();
-    loadProgress();
-    refreshUI();
-    
-    document.getElementById('goStart').onclick = () => { play(); };
+    resize(); loadProgress(); refreshUI();
+    document.getElementById('goStart').onclick = () => { Sound.start(); play(); };
     document.getElementById('goMarket').onclick = () => { currentTab = 'cars'; show('overlayMarket'); };
-    document.getElementById('retryBtn').onclick = play;
+    document.getElementById('retryBtn').onclick = () => { Sound.start(); play(); };
     document.getElementById('resumeBtn').onclick = pause;
     document.getElementById('pauseBtnToggle').onclick = pause;
-    
     document.getElementById('tabCars').onclick = () => { currentTab = 'cars'; switchTab(); };
     document.getElementById('tabMaps').onclick = () => { currentTab = 'maps'; switchTab(); };
     document.getElementById('tabUpgrades').onclick = () => { currentTab = 'upgrades'; switchTab(); };
-    
     document.querySelectorAll('.back-to-menu').forEach(b => b.onclick = () => show('overlayMain'));
     document.querySelectorAll('.nav-home').forEach(b => b.onclick = () => { state.running = false; show('overlayMain'); });
     
@@ -429,8 +467,11 @@ function init() {
     document.getElementById('rBtn').addEventListener('pointerdown', () => setTarget(8));
     window.addEventListener('pointerup', () => { world.car.targetDx = 0; dragging = false; });
     
-    document.getElementById('abilityBtn').onclick = activateAbility;
-    
+    document.getElementById('shieldBtn').onclick = () => {
+        if(state.shieldCharge >= 100 && state.running && !state.paused && !state.shieldActive) {
+            state.shieldActive = true; state.shieldCharge = 0; Sound.shield();
+        }
+    };
     canvas.addEventListener('pointerdown', (e) => {
         if(!state.running || state.paused) return;
         dragging = true;
@@ -442,570 +483,278 @@ function init() {
         const rect = canvas.getBoundingClientRect();
         world.car.x = (e.clientX - rect.left) - dragOffsetX - config.carW / 2;
     });
-    
     window.addEventListener('keydown', (e) => {
         if(e.key === 'ArrowLeft') setTarget(-8);
         if(e.key === 'ArrowRight') setTarget(8);
-        if(e.key === ' ' || e.key === 's') activateAbility();
+        if(e.key === 's' || e.key === ' ') document.getElementById('shieldBtn').click();
     });
     window.addEventListener('keyup', (e) => {
         if(e.key === 'ArrowLeft' || e.key === 'ArrowRight') world.car.targetDx = 0;
     });
-    
     requestAnimationFrame(loop);
 }
 
-// АКТИВАЦИЯ СПОСОБНОСТИ
-function activateAbility() {
-    if(state.abilityCharge >= 100 && state.running && !state.paused && !state.abilityActive) {
-        state.abilityActive = true;
-        state.abilityCharge = 0;
-        
-        // Эффект способности в зависимости от машины
-        const car = catalogCars.find(c => c.id === state.activeCar);
-        if(car) {
-            if(car.type === 'formula' || car.type === 'sport' || car.type === 'tesla') {
-                // Ускорение
-                state.speed *= 1.5;
-                clearTimeout(abilityTimeout);
-                abilityTimeout = setTimeout(() => { state.abilityActive = false; }, 3000);
-            } else if(car.type === 'truck' || car.type === 'pickup') {
-                // Неуязвимость
-                state.shieldActive = true;
-                clearTimeout(abilityTimeout);
-                abilityTimeout = setTimeout(() => { state.abilityActive = false; state.shieldActive = false; }, 4000);
-            } else {
-                // Магнит + бонус
-                state.magnetActive = true;
-                clearTimeout(abilityTimeout);
-                abilityTimeout = setTimeout(() => { state.abilityActive = false; state.magnetActive = false; }, 5000);
-            }
-        }
-    }
-}
-
 function saveProgress() {
-    try {
-        localStorage.setItem('cg_deluxe_v4', JSON.stringify({
-            coins: state.coins,
-            highScore: state.highScore,
-            ownedCars: state.ownedCars,
-            activeCar: state.activeCar,
-            ownedMaps: state.ownedMaps,
-            activeMap: state.activeMap,
-            upgrades: state.upgrades
-        }));
-    } catch(e) {}
+    try { localStorage.setItem('cg_deluxe_save_v3', JSON.stringify({ coins: state.coins, highScore: state.highScore, ownedCars: state.ownedCars, activeCar: state.activeCar, ownedMaps: state.ownedMaps, activeMap: state.activeMap, upgrades: state.upgrades })); } catch(e) {}
 }
-
 function loadProgress() {
     try {
-        const saved = localStorage.getItem('cg_deluxe_v4');
+        const saved = localStorage.getItem('cg_deluxe_save_v3');
         if(saved) {
             const d = JSON.parse(saved);
-            state.coins = d.coins || 0;
-            state.highScore = d.highScore || 0;
-            state.ownedCars = d.ownedCars || ['sedan'];
-            state.activeCar = d.activeCar || 'sedan';
-            state.ownedMaps = d.ownedMaps || ['field'];
-            state.activeMap = d.activeMap || 'field';
-            state.upgrades = d.upgrades || { speed: 0, magnet: 0, coinBonus: 0 };
+            state.coins = d.coins || 0; state.highScore = d.highScore || 0;
+            state.ownedCars = d.ownedCars || ['red']; state.activeCar = d.activeCar || 'red';
+            state.ownedMaps = d.ownedMaps || ['classic']; state.activeMap = d.activeMap || 'classic';
+            state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
         }
     } catch(e) {}
 }
-
 function resize() {
     const dpr = window.devicePixelRatio || 1;
-    view.w = canvas.clientWidth;
-    view.h = canvas.clientHeight;
-    canvas.width = view.w * dpr;
-    canvas.height = view.h * dpr;
+    view.w = canvas.clientWidth; view.h = canvas.clientHeight;
+    canvas.width = view.w * dpr; canvas.height = view.h * dpr;
     ctx.scale(dpr, dpr);
 }
-
 function play() {
-    state.running = true;
-    state.paused = false;
-    state.score = 0;
-    state.speed = 3.5 + (state.upgrades.speed * 0.3);
-    state.abilityCharge = 100;
-    state.abilityActive = false;
-    state.shieldActive = false;
-    state.magnetActive = false;
-    
+    state.running = true; state.paused = false; state.score = 0; state.speed = 4.0;
+    state.shieldCharge = 100; state.shieldActive = false;
     world.car = { x: view.w/2 - config.carW/2, y: view.h - 95, dx: 0, targetDx: 0, tilt: 0 };
-    world.obs = [];
-    world.gold = [];
+    world.obs = []; world.gold = [];
     world.lines = Array.from({length: 6}, (_, i) => i * (view.h / 6));
-    world.particles = [];
-    world.sparks = [];
-    world.clouds = [];
-    world.scenery = [];
-    
-    // Инициализация облаков и декораций
-    for(let i=0; i<5; i++) {
-        world.clouds.push({
-            x: Math.random() * view.w,
-            y: Math.random() * view.h * 0.6,
-            size: 20 + Math.random() * 30,
-            speed: 0.5 + Math.random() * 0.5
-        });
-    }
-    
+    world.particles = []; world.sparks = [];
     show(null);
     document.getElementById('pauseBtnToggle').style.display = 'block';
 }
-
 function pause() {
     if(!state.running) return;
     state.paused = !state.paused;
     document.getElementById('overlayPause').classList.toggle('hidden', !state.paused);
 }
-
 let lastSpawn = 0;
 function loop(t) {
-    if(state.running && !state.paused) {
-        update(t);
-        render();
-    }
+    if(state.running && !state.paused) { update(t); render(); }
     requestAnimationFrame(loop);
 }
-
 function update(t) {
-    // Регенерация способности
-    if(!state.abilityActive && state.abilityCharge < 100) {
-        state.abilityCharge += 0.15;
+    const shieldRegenBase = 0.25, shieldBonus = state.upgrades.shield * 0.12;
+    if(!state.shieldActive && state.shieldCharge < 100) {
+        state.shieldCharge = Math.min(100, state.shieldCharge + shieldRegenBase + shieldBonus);
     }
-    
     const fill = document.getElementById('boostBarFill');
-    fill.style.width = state.abilityCharge + '%';
-    fill.style.background = state.abilityCharge >= 100 ? 
-        'linear-gradient(90deg, #fbbf24, #f59e0b)' : 
-        'linear-gradient(90deg, #3b82f6, #06b6d4)';
-    
-    // Движение машины
+    fill.style.width = state.shieldCharge + '%';
+    fill.style.background = state.shieldActive ? 'linear-gradient(90deg, #c084fc, #f43f5e)' : (state.shieldCharge >= 100 ? 'linear-gradient(90deg, #38bdf8, #34d399)' : 'linear-gradient(90deg, #3b82f6, #06b6d4)');
+
     world.car.dx += (world.car.targetDx - world.car.dx) * 0.25;
     world.car.x += world.car.dx;
     world.car.x = Math.max(14, Math.min(view.w - config.carW - 14, world.car.x));
-    
     const desiredTilt = Math.max(-0.18, Math.min(0.18, (world.car.dx || 0) * 0.03));
     world.car.tilt += (desiredTilt - world.car.tilt) * 0.2;
-    
-    // Движение дороги
+
     world.lines = world.lines.map(y => (y + state.speed) % view.h);
-    
-    // Частицы
     if(Math.random() < 0.15) {
-        world.particles.push({
-            x: world.car.x + config.carW/2 + (Math.random()*6-3),
-            y: world.car.y + config.carH,
-            vy: 2 + Math.random()*2,
-            r: 2 + Math.random()*1.5,
-            life: 1
-        });
+        world.particles.push({ x: world.car.x + config.carW/2 + (Math.random()*6-3), y: world.car.y + config.carH, vy: 2 + Math.random()*2, r: 2 + Math.random()*1.5, life: 1 });
     }
     world.particles.forEach(p => { p.y += p.vy; p.life -= 0.06; });
     world.particles = world.particles.filter(p => p.life > 0);
-    
-    // Движение облаков
-    world.clouds.forEach(cloud => {
-        cloud.y += cloud.speed * (state.speed * 0.3);
-        if(cloud.y > view.h) {
-            cloud.y = -50;
-            cloud.x = Math.random() * view.w;
-        }
-    });
-    
-    // Спавн
-    if(t - lastSpawn > Math.max(600, 1000 - state.speed * 50)) {
-        if(Math.random() > 0.4) {
-            const colors = ['#dc2626', '#2563eb', '#d97706', '#7c3aed', '#059669'];
-            world.obs.push({
-                x: 16 + Math.random() * (view.w - 80),
-                y: -80, w: 40, h: 72,
-                color: colors[Math.floor(Math.random() * colors.length)]
-            });
+
+    if(t - lastSpawn > Math.max(500, 900 - state.speed * 40)) {
+        if(Math.random() > 0.45) {
+            const colors = ['#dc2626', '#2563eb', '#d97706', '#7c3aed', '#059669', '#e11d48'];
+            world.obs.push({ x: 16 + Math.random() * (view.w - 80), y: -80, w: 40, h: 72, color: colors[Math.floor(Math.random() * colors.length)] });
         } else {
             world.gold.push({ x: 20 + Math.random() * (view.w - 70), y: -50, w: 26, h: 26, spin: 0 });
         }
         lastSpawn = t;
     }
-    
-    // Магнит
-    if(state.upgrades.magnet > 0 || state.magnetActive) {
-        const range = state.magnetActive ? 100 : 40 + state.upgrades.magnet * 30;
+
+    if (state.upgrades.magnet > 0) {
+        const range = 40 + state.upgrades.magnet * 35;
         world.gold.forEach(g => {
-            const cx = world.car.x + config.carW/2;
-            const cy = world.car.y + config.carH/2;
-            const dx = cx - (g.x + 13);
-            const dy = cy - (g.y + 13);
+            const cx = world.car.x + config.carW/2, cy = world.car.y + config.carH/2;
+            const dx = cx - (g.x + 13), dy = cy - (g.y + 13);
             const dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist < range) {
-                g.x += (dx / dist) * 6;
-                g.y += (dy / dist) * 6;
-            }
+            if (dist < range) { g.x += (dx / dist) * 5.5; g.y += (dy / dist) * 5.5; }
         });
     }
-    
-    // Препятствия
+
     world.obs.forEach((o, index) => {
-        o.y += state.speed * 1.2;
+        o.y += state.speed * 1.25;
         if(hit(world.car, config.carW, config.carH, o, o.w, o.h)) {
-            if(state.abilityActive && (state.shieldActive || state.magnetActive)) {
-                world.obs.splice(index, 1);
-                for(let k=0; k<12; k++) {
-                    world.sparks.push({x: o.x + 20, y: o.y + 36, a: Math.random()*Math.PI*2, life: 1, c: '#06b6d4'});
-                }
+            if(state.shieldActive) {
+                state.shieldActive = false; world.obs.splice(index, 1); Sound.crash();
+                for(let k=0; k<12; k++) world.sparks.push({x: o.x + 20, y: o.y + 36, a: Math.random()*Math.PI*2, life: 1, c: '#06b6d4'});
             } else {
-                state.running = false;
+                state.running = false; Sound.crash();
                 document.getElementById('pauseBtnToggle').style.display = 'none';
                 if(state.score > state.highScore) state.highScore = Math.floor(state.score);
                 document.getElementById('finalScoreVal').textContent = Math.floor(state.score);
                 document.getElementById('finalHighScoreVal').textContent = Math.floor(state.highScore);
-                saveProgress();
-                refreshUI();
+                saveProgress(); saveScoreToDB(); refreshUI();
                 show('overlayOver');
             }
         }
     });
     world.obs = world.obs.filter(o => o.y < view.h);
-    
-    // Монеты
+
     world.gold.forEach((g, i) => {
-        if(g.y < view.h) g.y += state.speed * 0.9;
+        if (g.y < view.h) g.y += state.speed * 0.95;
         g.spin += 0.15;
         if(hit(world.car, config.carW, config.carH, g, g.w, g.h)) {
-            const bonus = state.magnetActive ? 15 : (5 + state.upgrades.coinBonus * 3);
-            state.coins += bonus;
-            state.score += 10;
-            world.gold.splice(i, 1);
-            for(let k=0; k<6; k++){
-                world.sparks.push({x: g.x+13, y: g.y+13, a: Math.random()*Math.PI*2, life: 1, c: '#fbbf24'});
-            }
+            state.coins += 5; state.score += 10; world.gold.splice(i, 1); Sound.coin();
+            for(let k=0; k<6; k++) world.sparks.push({x: g.x+13, y: g.y+13, a: Math.random()*Math.PI*2, life: 1, c: '#fbbf24'});
             refreshUI();
         }
     });
     world.gold = world.gold.filter(g => g.y < view.h && g.y > -100);
-    
-    // Искры
+
     world.sparks.forEach(s => { s.x += Math.cos(s.a)*4; s.y += Math.sin(s.a)*4; s.life -= 0.06; });
     world.sparks = world.sparks.filter(s => s.life > 0);
-    
-    // Скорость
-    const maxSpeed = 5.5 + (state.upgrades.speed * 0.8);
-    if(state.score < 200) {
-        state.speed = Math.min(maxSpeed, state.speed + 0.001);
-    } else {
-        state.speed = Math.min(maxSpeed, state.speed + 0.002);
-    }
-    
-    state.score += 0.1;
+
+    if (state.score < 150) { state.speed = 4.0 + (state.score * 0.002); } 
+    else { state.speed = 4.3 + Math.min(3.9, (state.score - 150) * 0.007); }
+
+    const multiplierBonus = 1 + (state.upgrades.scoreMultiplier * 0.25);
+    state.score += 0.12 * multiplierBonus;
     document.getElementById('scoreVal').textContent = Math.floor(state.score);
 }
 
 function render() {
     const map = catalogMaps.find(m => m.id === state.activeMap) || catalogMaps[0];
-    
-    // Фон локации
-    const grad = ctx.createLinearGradient(0, 0, view.w, 0);
-    grad.addColorStop(0, map.bgLeft);
-    grad.addColorStop(0.5, map.bgRight);
-    grad.addColorStop(1, map.bgLeft);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, view.w, view.h);
-    
-    // Облака
-    ctx.fillStyle = map.cloudColor;
-    world.clouds.forEach(cloud => {
-        ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size*0.6, cloud.y - cloud.size*0.2, cloud.size*0.8, 0, Math.PI * 2);
-        ctx.arc(cloud.x - cloud.size*0.6, cloud.y - cloud.size*0.1, cloud.size*0.7, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    
-    // Дорога
-    ctx.fillStyle = map.roadColor;
-    ctx.fillRect(14, 0, view.w - 28, view.h);
-    
-    // Разметка
-    ctx.fillStyle = map.lineColor;
-    world.lines.forEach(y => {
-        ctx.fillRect(view.w/2 - 3, y, 6, 40);
-    });
-    
-    // Частицы
-    world.particles.forEach(p => {
-        ctx.globalAlpha = p.life * 0.4;
-        ctx.fillStyle = '#94a3b8';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
-    });
+    const grad = ctx.createLinearGradient(0, 0, 0, view.h);
+    grad.addColorStop(0, map.bg1); grad.addColorStop(1, map.bg2);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, view.w, view.h);
+    ctx.fillStyle = map.side; ctx.fillRect(0, 0, 14, view.h); ctx.fillRect(view.w - 14, 0, 14, view.h);
+    ctx.fillStyle = map.line;
+    world.lines.forEach(y => { ctx.fillRect(view.w/2 - 3, y, 6, 40); });
+
+    world.particles.forEach(p => { ctx.globalAlpha = p.life * 0.4; ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); });
     ctx.globalAlpha = 1;
-    
-    // Препятствия
+
     world.obs.forEach(o => {
-        ctx.save();
-        ctx.translate(o.x + o.w/2, o.y + o.h/2);
-        ctx.rotate(Math.PI);
-        ctx.translate(-o.w/2, -o.h/2);
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(2, o.h, o.w, 4);
-        ctx.fillStyle = o.color;
-        roundRect(ctx, 0, 0, o.w, o.h, 6); ctx.fill();
+        ctx.save(); ctx.translate(o.x + o.w/2, o.y + o.h/2); ctx.rotate(Math.PI); ctx.translate(-o.w/2, -o.h/2);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(2, o.h, o.w, 4);
+        ctx.fillStyle = o.color; roundRect(ctx, 0, 0, o.w, o.h, 6); ctx.fill();
+        ctx.fillStyle = '#1e293b'; ctx.fillRect(5, 14, o.w - 10, 14); ctx.fillRect(6, o.h - 18, o.w - 12, 8);
+        ctx.fillStyle = '#fef08a'; ctx.fillRect(4, 2, 6, 3); ctx.fillRect(o.w - 10, 2, 6, 3);
         ctx.restore();
     });
-    
-    // Монеты
+
     world.gold.forEach(g => {
         const squish = Math.abs(Math.cos(g.spin));
-        ctx.save();
-        ctx.translate(g.x + 13, g.y + 13);
-        ctx.scale(Math.max(0.2, squish), 1);
-        ctx.fillStyle = "#fbbf24";
-        ctx.beginPath(); ctx.arc(0, 0, 13, 0, 7); ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill();
+        ctx.save(); ctx.translate(g.x + 13, g.y + 13); ctx.scale(Math.max(0.2, squish), 1);
+        ctx.fillStyle = "#f59e0b"; ctx.beginPath(); ctx.arc(0, 0, 13, 0, 7); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill();
         ctx.restore();
     });
-    
-    // Искры
-    world.sparks.forEach(s => {
-        ctx.globalAlpha = s.life; ctx.fillStyle = s.c;
-        ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 7); ctx.fill();
-    });
+
+    world.sparks.forEach(s => { ctx.globalAlpha = s.life; ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 7); ctx.fill(); });
     ctx.globalAlpha = 1;
-    
-    // Машина
+
     ctx.save();
     ctx.translate(world.car.x + config.carW/2, world.car.y + config.carH/2);
-    ctx.rotate(world.car.tilt || 0);
-    ctx.translate(-config.carW/2, -config.carH/2);
-    
-    const car = catalogCars.find(c => c.id === state.activeCar) || catalogCars[0];
-    drawCarModel(ctx, car.type, car.color);
+    ctx.rotate(world.car.tilt || 0); ctx.translate(-config.carW/2, -config.carH/2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(2, config.carH, config.carW - 4, 5);
+    const carModel = catalogCars.find(c => c.id === state.activeCar) || catalogCars[0];
+    drawCarModel(ctx, carModel.type, carModel.c);
     ctx.restore();
-    
-    // Эффект способности
-    if(state.abilityActive) {
-        ctx.save();
-        ctx.strokeStyle = state.magnetActive ? '#f59e0b' : '#06b6d4';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = ctx.strokeStyle;
-        ctx.globalAlpha = 0.7;
-        ctx.beginPath();
-        ctx.arc(world.car.x + config.carW/2, world.car.y + config.carH/2, config.carH * 0.7, 0, Math.PI*2);
-        ctx.stroke();
-        ctx.restore();
+
+    if(state.shieldActive) {
+        ctx.save(); ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = '#06b6d4';
+        ctx.globalAlpha = 0.65 + Math.sin(Date.now() * 0.012) * 0.15;
+        ctx.beginPath(); ctx.arc(world.car.x + config.carW/2, world.car.y + config.carH/2, config.carH * 0.62, 0, Math.PI*2);
+        ctx.stroke(); ctx.fillStyle = 'rgba(6, 182, 212, 0.08)'; ctx.fill(); ctx.restore();
     }
 }
 
 function drawCarModel(c, type, color) {
     c.fillStyle = color;
-    
-    if(type === 'sedan') {
-        // Обычный седан
-        roundRect(c, 2, 10, config.carW - 4, config.carH - 12, 8); c.fill();
-        c.fillStyle = '#1e293b';
-        roundRect(c, 6, 18, config.carW - 12, 14, 4); c.fill();
-        roundRect(c, 7, config.carH - 24, config.carW - 14, 10, 3); c.fill();
+    if(type === 'sport') {
+        roundRect(c, 2, 8, config.carW - 4, config.carH - 8, 12); c.fill();
+        c.fillStyle = '#0f172a'; c.fillRect(0, config.carH - 6, config.carW, 4);
+        roundRect(c, 6, 22, config.carW - 12, 14, 4); c.fill();
     } else if(type === 'truck') {
-        // Фура
-        c.fillStyle = color;
         roundRect(c, 0, 0, config.carW, config.carH, 5); c.fill();
-        c.fillStyle = '#1e293b';
-        c.fillRect(4, 8, config.carW - 8, 16);
-        c.fillStyle = '#475569';
-        c.fillRect(4, 48, config.carW - 8, 18);
-    } else if(type === 'formula') {
-        // Формула 1
-        c.beginPath();
-        c.moveTo(config.carW/2, 2);
-        c.lineTo(config.carW - 2, config.carH * 0.25);
-        c.lineTo(config.carW - 4, config.carH - 4);
-        c.lineTo(4, config.carH - 4);
-        c.lineTo(2, config.carH * 0.25);
-        c.closePath();
-        c.fill();
-        c.fillStyle = '#dc2626';
-        c.fillRect(config.carW/2 - 3, 12, 6, config.carH * 0.4);
-    } else if(type === 'pickup') {
-        // Пикап
-        roundRect(c, 0, 0, config.carW, config.carH * 0.65, 5); c.fill();
-        c.fillStyle = '#374151';
-        roundRect(c, 2, config.carH * 0.65, config.carW - 4, config.carH * 0.35, 3); c.fill();
-        c.fillStyle = '#1e293b';
-        c.fillRect(4, 12, config.carW - 8, 12);
-    } else if(type === 'tesla') {
-        // Tesla
-        c.beginPath();
-        c.moveTo(6, config.carH - 6);
-        c.lineTo(config.carW/2, 4);
-        c.lineTo(config.carW - 6, config.carH - 6);
-        c.closePath();
-        c.fill();
-        c.fillStyle = '#06b6d4';
-        c.fillRect(config.carW/2 - 4, 16, 8, config.carH * 0.5);
-    } else if(type === 'sport') {
-        // Спорткар
-        roundRect(c, 3, 12, config.carW - 6, config.carH - 16, 10); c.fill();
-        c.fillStyle = '#1e293b';
-        roundRect(c, 7, 20, config.carW - 14, 12, 4); c.fill();
-        c.fillStyle = color;
-        c.fillRect(2, config.carH - 8, config.carW - 4, 6);
-    } else if(type === 'taxi') {
-        // Такси
-        roundRect(c, 2, 8, config.carW - 4, config.carH - 10, 8); c.fill();
-        c.fillStyle = '#000';
-        c.fillRect(6, 16, config.carW - 12, 4);
-        c.fillStyle = '#fbbf24';
-        c.fillRect(config.carW/2 - 6, 4, 12, 6);
-    } else if(type === 'police') {
-        // Полиция
-        roundRect(c, 2, 10, config.carW - 4, config.carH - 12, 8); c.fill();
-        c.fillStyle = '#fff';
-        c.fillRect(4, 14, config.carW - 8, 6);
-        c.fillStyle = '#dc2626';
-        c.fillRect(config.carW/2 - 5, 6, 4, 4);
-        c.fillRect(config.carW/2 + 1, 6, 4, 4);
+        c.fillStyle = '#0f172a'; c.fillRect(4, 16, config.carW - 8, 12);
+        c.fillStyle = '#475569'; c.fillRect(4, 46, config.carW - 8, 20);
+    } else if(type === 'cyber') {
+        c.beginPath(); c.moveTo(config.carW/2, 0); c.lineTo(config.carW, config.carH * 0.32);
+        c.lineTo(config.carW - 3, config.carH); c.lineTo(3, config.carH);
+        c.lineTo(0, config.carH * 0.32); c.closePath(); c.fill();
+        c.fillStyle = '#06b6d4'; c.fillRect(6, config.carH * 0.36, config.carW - 12, 4);
+    } else {
+        roundRect(c, 0, 0, config.carW, config.carH, 8); c.fill();
+        c.fillStyle = "rgba(255,255,255,0.5)"; roundRect(c, 6, 14, config.carW - 12, 16, 4); c.fill();
+        c.fillStyle = "rgba(255,255,255,0.3)"; roundRect(c, 7, config.carH - 22, config.carW - 14, 8, 2); c.fill();
     }
-    
-    // Колёса
-    c.fillStyle = '#0f172a';
-    c.fillRect(0, 14, 4, 12);
-    c.fillRect(config.carW - 4, 14, 4, 12);
-    c.fillRect(0, config.carH - 20, 4, 12);
-    c.fillRect(config.carW - 4, config.carH - 20, 4, 12);
-    
-    // Фары
-    c.fillStyle = '#fef08a';
-    c.fillRect(4, 4, 5, 3);
-    c.fillRect(config.carW - 9, 4, 5, 3);
+    c.fillStyle = '#090d16';
+    c.fillRect(-2, 12, 3, 12); c.fillRect(config.carW - 1, 12, 3, 12);
+    c.fillRect(-2, config.carH - 22, 3, 12); c.fillRect(config.carW - 1, config.carH - 22, 3, 12);
+    c.fillStyle = '#fff'; c.fillRect(4, 2, 6, 3); c.fillRect(config.carW - 10, 2, 6, 3);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath(); ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-
-function hit(a, aw, ah, b, bw, bh) {
-    return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
-}
-
+function hit(a, aw, ah, b, bw, bh) { return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; }
 function show(id) {
     document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
     if(id) document.getElementById(id).classList.remove('hidden');
     if(id === 'overlayMarket') renderCatalog();
 }
-
 function switchTab() {
     document.getElementById('tabCars').classList.toggle('active', currentTab === 'cars');
     document.getElementById('tabMaps').classList.toggle('active', currentTab === 'maps');
     document.getElementById('tabUpgrades').classList.toggle('active', currentTab === 'upgrades');
     renderCatalog();
 }
-
 function refreshUI() {
     document.getElementById('coinVal').textContent = state.coins;
     document.getElementById('highScoreVal').textContent = Math.floor(state.highScore);
 }
-
 function renderCatalog() {
-    const grid = document.getElementById('marketList');
-    grid.innerHTML = '';
-    
+    const grid = document.getElementById('marketList'); grid.innerHTML = '';
     if(currentTab === 'cars') {
         catalogCars.forEach(item => {
-            const isOwned = state.ownedCars.includes(item.id);
-            const isActive = state.activeCar === item.id;
-            const card = document.createElement('div');
-            card.className = 'market-item';
-            card.innerHTML = `
-                <div class="car-preview-render" id="prev_${item.id}"></div>
-                <div class="item-name">${item.n}</div>
-                <div class="item-desc">${item.desc}</div>
-                <div class="item-price">${isOwned ? '✓ Куплено' : item.p + ' 💰'}</div>
-                <button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">
-                    ${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}
-                </button>
-            `;
+            const isOwned = state.ownedCars.includes(item.id), isActive = state.activeCar === item.id;
+            const card = document.createElement('div'); card.className = 'market-item';
+            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
             grid.appendChild(card);
-            
-            const pCanv = document.createElement('canvas');
-            pCanv.width = 50; pCanv.height = 65;
-            drawCarModel(pCanv.getContext('2d'), item.type, item.color);
+            const pCanv = document.createElement('canvas'); pCanv.width = 40; pCanv.height = 55;
+            drawCarModel(pCanv.getContext('2d'), item.type, item.c);
             document.getElementById(`prev_${item.id}`).appendChild(pCanv);
-            
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) {
-                    state.coins -= item.p;
-                    state.ownedCars.push(item.id);
-                } else if(isOwned) {
-                    state.activeCar = item.id;
-                }
+                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedCars.push(item.id); Sound.buy(); } 
+                else if(isOwned) { state.activeCar = item.id; }
                 saveProgress(); refreshUI(); renderCatalog();
             };
         });
     } else if(currentTab === 'maps') {
         catalogMaps.forEach(item => {
-            const isOwned = state.ownedMaps.includes(item.id);
-            const isActive = state.activeMap === item.id;
-            const card = document.createElement('div');
-            card.className = 'market-item';
-            card.innerHTML = `
-                <div class="map-preview-render" style="background:linear-gradient(90deg, ${item.bgLeft}, ${item.bgRight})"></div>
-                <div class="item-name">${item.n}</div>
-                <div class="item-desc">${item.desc}</div>
-                <div class="item-price">${isOwned ? '✓ Открыто' : item.p + ' 💰'}</div>
-                <button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">
-                    ${isActive ? 'Активна' : isOwned ? 'Выбрать' : 'Открыть'}
-                </button>
-            `;
+            const isOwned = state.ownedMaps.includes(item.id), isActive = state.activeMap === item.id;
+            const card = document.createElement('div'); card.className = 'market-item';
+            card.innerHTML = `<div class="map-preview-render" style="background:linear-gradient(140deg, ${item.bg1}, ${item.bg2})"></div><div class="item-name">${item.n}</div><div class="item-desc">Уникальный трек</div><div class="item-price">${isOwned ? 'Доступна' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Активна' : isOwned ? 'Выбрать' : 'Открыть'}</button>`;
             grid.appendChild(card);
-            
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) {
-                    state.coins -= item.p;
-                    state.ownedMaps.push(item.id);
-                } else if(isOwned) {
-                    state.activeMap = item.id;
-                }
+                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedMaps.push(item.id); Sound.buy(); } 
+                else if(isOwned) { state.activeMap = item.id; }
                 saveProgress(); refreshUI(); renderCatalog();
             };
         });
     } else {
         catalogUpgrades.forEach(item => {
-            const currentLvl = state.upgrades[item.id] || 0;
-            const isMax = currentLvl >= item.max;
+            const currentLvl = state.upgrades[item.id] || 0, isMax = currentLvl >= item.max;
             const price = isMax ? 0 : item.prices[currentLvl];
-            const card = document.createElement('div');
-            card.className = 'market-item';
-            card.innerHTML = `
-                <div class="upgrade-icon-render">${item.icon}</div>
-                <div class="item-name">${item.n}</div>
-                <div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div>
-                <div class="item-price">${isMax ? 'МАКС' : price + ' 💰'}</div>
-                <button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>
-                    ${isMax ? 'Изучено' : 'Улучшить'}
-                </button>
-            `;
+            const card = document.createElement('div'); card.className = 'market-item';
+            card.innerHTML = `<div class="upgrade-icon-render">${item.icon}</div><div class="item-name">${item.n}</div><div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div><div class="item-price">${isMax ? 'Максимум' : price + ' 💰'}</div><button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>${isMax ? 'Изучено' : 'Улучшить'}</button>`;
             grid.appendChild(card);
-            
             card.querySelector('button').onclick = () => {
-                if(!isMax && state.coins >= price) {
-                    state.coins -= price;
-                    state.upgrades[item.id] = currentLvl + 1;
-                    saveProgress(); refreshUI(); renderCatalog();
-                }
+                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy(); saveProgress(); refreshUI(); renderCatalog(); }
             };
         });
     }
 }
-
 window.onresize = () => { resize(); if(!state.running) render(); };
 init();
 </script>
