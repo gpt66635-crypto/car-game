@@ -51,8 +51,8 @@ display: flex;
 flex-direction: column;
 align-items: center;
 border: 1px solid rgba(255,255,255,0.06);
-margin-top: 16px;
-margin-bottom: 16px;
+margin-top: 15vh; /* Опускаем блок на ~15% высоты экрана */
+margin-bottom: 12px;
 }
 .score-row {
 display: flex;
@@ -289,24 +289,24 @@ align-items: center;
 // === ЗВУКОВОЙ ДВИЖОК ===
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const Sound = {
-play: (freq, type, duration, vol = 0.1) => {
-if (audioCtx.state === 'suspended') audioCtx.resume();
-const osc = audioCtx.createOscillator();
-const gain = audioCtx.createGain();
-osc.type = type;
-osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-osc.start();
-osc.stop(audioCtx.currentTime + duration);
-},
-coin: () => { Sound.play(880, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1760, 'sine', 0.2, 0.1), 50); },
-crash: () => { Sound.play(150, 'sawtooth', 0.3, 0.2); Sound.play(100, 'square', 0.3, 0.2); },
-buy: () => { Sound.play(523, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(659, 'sine', 0.1, 0.1), 100); setTimeout(() => Sound.play(784, 'sine', 0.2, 0.1), 200); },
-start: () => { Sound.play(440, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(880, 'sine', 0.3, 0.1), 100); },
-shield: () => { Sound.play(600, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1200, 'sine', 0.4, 0.1), 50); }
+    play: (freq, type, duration, vol = 0.1) => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    },
+    coin: () => { Sound.play(880, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1760, 'sine', 0.2, 0.1), 50); },
+    crash: () => { Sound.play(150, 'sawtooth', 0.3, 0.2); Sound.play(100, 'square', 0.3, 0.2); },
+    buy: () => { Sound.play(523, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(659, 'sine', 0.1, 0.1), 100); setTimeout(() => Sound.play(784, 'sine', 0.2, 0.1), 200); },
+    start: () => { Sound.play(440, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(880, 'sine', 0.3, 0.1), 100); },
+    shield: () => { Sound.play(600, 'sine', 0.1, 0.1); setTimeout(() => Sound.play(1200, 'sine', 0.4, 0.1), 50); }
 };
 
 const canvas = document.getElementById('gameCanvas');
@@ -351,13 +351,14 @@ const catalogMaps = [
 const catalogUpgrades = [
 { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота на дистанции', max: 3, prices: [50, 120, 250], icon: '🧲' },
 { id: 'shield', n: 'Турбо Щит', d: 'Ускоряет откат защиты', max: 3, prices: [70, 150, 300], icon: '⚡' },
-{ id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков за заезд', max: 3, prices: [60, 140, 280], icon: '' }
+{ id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков за заезд', max: 3, prices: [60, 140, 280], icon: '📈' }
 ];
 
 function init() {
 resize();
 loadProgress();
 refreshUI();
+// Добавлены звуки при старте
 document.getElementById('goStart').onclick = () => { Sound.start(); play(); };
 document.getElementById('goMarket').onclick = () => { currentTab = 'cars'; show('overlayMarket'); };
 document.getElementById('retryBtn').onclick = () => { Sound.start(); play(); };
@@ -381,7 +382,7 @@ document.getElementById('shieldBtn').onclick = () => {
 if(state.shieldCharge >= 100 && state.running && !state.paused && !state.shieldActive) {
 state.shieldActive = true;
 state.shieldCharge = 0;
-Sound.shield();
+Sound.shield(); // Звук щита
 }
 };
 
@@ -552,13 +553,13 @@ if(hit(world.car, config.carW, config.carH, o, o.w, o.h)) {
 if(state.shieldActive) {
 state.shieldActive = false;
 world.obs.splice(index, 1);
-Sound.crash();
+Sound.crash(); // Звук удара о препятствие с щитом
 for(let k=0; k<12; k++) {
 world.sparks.push({x: o.x + 20, y: o.y + 36, a: Math.random()*Math.PI*2, life: 1, c: '#06b6d4'});
 }
 } else {
 state.running = false;
-Sound.crash();
+Sound.crash(); // Звук аварии
 document.getElementById('pauseBtnToggle').style.display = 'none';
 if(state.score > state.highScore) {
 state.highScore = Math.floor(state.score);
@@ -580,7 +581,7 @@ if(hit(world.car, config.carW, config.carH, g, g.w, g.h)) {
 state.coins += 5;
 state.score += 10;
 world.gold.splice(i, 1);
-Sound.coin();
+Sound.coin(); // Звук монетки
 for(let k=0; k<6; k++){
 world.sparks.push({x: g.x+13, y: g.y+13, a: Math.random()*Math.PI*2, life: 1, c: '#fbbf24'});
 }
@@ -774,7 +775,7 @@ card.querySelector('button').onclick = () => {
 if(!isOwned && state.coins >= item.p) {
 state.coins -= item.p;
 state.ownedCars.push(item.id);
-Sound.buy();
+Sound.buy(); // Звук покупки
 } else if(isOwned) {
 state.activeCar = item.id;
 }
@@ -801,7 +802,7 @@ card.querySelector('button').onclick = () => {
 if(!isOwned && state.coins >= item.p) {
 state.coins -= item.p;
 state.ownedMaps.push(item.id);
-Sound.buy();
+Sound.buy(); // Звук покупки
 } else if(isOwned) {
 state.activeMap = item.id;
 }
@@ -829,7 +830,7 @@ card.querySelector('button').onclick = () => {
 if(!isMax && state.coins >= price) {
 state.coins -= price;
 state.upgrades[item.id] = currentLvl + 1;
-Sound.buy();
+Sound.buy(); // Звук покупки
 saveProgress(); refreshUI(); renderCatalog();
 }
 };
