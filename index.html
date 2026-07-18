@@ -19,9 +19,11 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; }
 body {
 font-family: var(--game-font); display: flex; flex-direction: column;
-justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+/* ИЗМЕНЕНИЕ 1: Сдвигаем игру вверх, чтобы интерфейс мобильных браузеров не мешал */
+justify-content: flex-start; align-items: center; min-height: 100vh; margin: 0;
+padding-top: max(6vh, env(safe-area-inset-top, 20px)); padding-bottom: 20px;
 background: radial-gradient(circle at 50% 0%, #172237 0%, var(--bg-dark) 75%);
-overflow: hidden; color: var(--text-white); padding-top: env(safe-area-inset-top, 0px);
+overflow: hidden; color: var(--text-white); 
 overscroll-behavior: none;
 }
 .game-container {
@@ -43,7 +45,7 @@ height: 400px;
 display: block; 
 touch-action: none; 
 box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-margin-top: 8px; /* Сдвигаем вниз от панели */
+margin-top: 8px;
 }
 .controls { display: flex; width: 100%; gap: 12px; margin-top: 14px; }
 .btn { border: none; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-family: inherit; }
@@ -190,12 +192,6 @@ const db = firebase.database();
 
 // === СИСТЕМА АККАУНТОВ ===
 let playerNick = localStorage.getItem('cg_nick') || '';
-let defaultSave = {
-    coins: 0, highScore: 0,
-    ownedCars: ['red'], activeCar: 'red',
-    ownedMaps: ['classic'], activeMap: 'classic',
-    upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
-};
 
 let state = {
     running: false, paused: false, score: 0, highScore: 0, coins: 0, speed: 4.0,
@@ -203,36 +199,63 @@ let state = {
     shieldCharge: 100, shieldActive: false, upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
 };
 
-function loadAccountProgress(nick) {
-    try {
-        const saved = localStorage.getItem('cg_save_' + nick);
-        if (saved) {
-            const d = JSON.parse(saved);
-            state.coins = d.coins || 0;
-            state.highScore = d.highScore || 0;
-            state.ownedCars = d.ownedCars || ['red'];
-            state.activeCar = d.activeCar || 'red';
-            state.ownedMaps = d.ownedMaps || ['classic'];
-            state.activeMap = d.activeMap || 'classic';
-            state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
-        } else {
-            state.coins = 0; state.highScore = 0;
-            state.ownedCars = ['red']; state.activeCar = 'red';
-            state.ownedMaps = ['classic']; state.activeMap = 'classic';
-            state.upgrades = { magnet: 0, shield: 0, scoreMultiplier: 0 };
-        }
-    } catch(e) {}
+function applySaveData(d) {
+    state.coins = d.coins || 0;
+    state.highScore = d.highScore || 0;
+    state.ownedCars = d.ownedCars || ['red'];
+    state.activeCar = d.activeCar || 'red';
+    state.ownedMaps = d.ownedMaps || ['classic'];
+    state.activeMap = d.activeMap || 'classic';
+    state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
 }
 
+// ИЗМЕНЕНИЕ 2: Загрузка полноценного аккаунта через Firebase
+function loadAccountProgress(nick) {
+    // 1. Быстрая загрузка из кэша (если есть)
+    try {
+        const saved = localStorage.getItem('cg_save_' + nick);
+        if (saved) applySaveData(JSON.parse(saved));
+        else applySaveData({});
+    } catch(e) { applySaveData({}); }
+    
+    // 2. Синхронизация с облаком (Firebase) - для других клиентов
+    if (db) {
+        db.ref('users/' + nick).once('value').then(snapshot => {
+            const d = snapshot.val();
+            if (d) {
+                applySaveData(d);
+                localStorage.setItem('cg_save_' + nick, JSON.stringify(d)); // Обновляем кэш
+                refreshUI();
+            }
+        });
+    }
+}
+
+// ИЗМЕНЕНИЕ 2: Сохранение полноценного аккаунта в Firebase
 function saveAccountProgress() {
     try {
-        if (!playerNick) return;
-        localStorage.setItem('cg_save_' + playerNick, JSON.stringify({
+        if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') return;
+        
+        const saveData = {
             coins: state.coins, highScore: state.highScore,
             ownedCars: state.ownedCars, activeCar: state.activeCar,
             ownedMaps: state.ownedMaps, activeMap: state.activeMap,
             upgrades: state.upgrades
-        }));
+        };
+        
+        // Локальное сохранение
+        localStorage.setItem('cg_save_' + playerNick, JSON.stringify(saveData));
+        
+        // Отправляем ВЕСЬ профиль в Firebase
+        if(db) {
+            db.ref('users/' + playerNick).set(saveData);
+            db.ref('leaderboard/' + playerNick).set({ 
+                nick: playerNick, 
+                highScore: state.highScore, 
+                coins: state.coins, 
+                lastPlay: Date.now() 
+            });
+        }
     } catch(e) {}
 }
 
@@ -301,16 +324,12 @@ function loadLeaderboard() {
     });
 }
 
-function saveScoreToDB() {
-    if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') return;
-    db.ref('leaderboard/' + playerNick).set({ nick: playerNick, highScore: state.highScore, coins: state.coins, lastPlay: Date.now() });
-}
-
 // === ИГРА ===
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const config = { carW: 42, carH: 72 };
-let world = { car: {x: 0, y: 0, dx: 0, targetDx: 0, tilt: 0}, obs: [], gold: [], lines: [], particles: [], sparks: [] };
+// ИЗМЕНЕНИЕ 3: Добавлен массив decor для хранения декораций по краям
+let world = { car: {x: 0, y: 0, dx: 0, targetDx: 0, tilt: 0}, obs: [], gold: [], lines: [], particles: [], sparks: [], decor: [] };
 let dragging = false, dragOffsetX = 0, currentTab = 'cars', view = { w: 0, h: 0 };
 
 const catalogCars = [
@@ -392,7 +411,7 @@ function play() {
     state.running = true; state.paused = false; state.score = 0; state.speed = 4.0;
     state.shieldCharge = 100; state.shieldActive = false;
     world.car = { x: view.w/2 - config.carW/2, y: view.h - 95, dx: 0, targetDx: 0, tilt: 0 };
-    world.obs = []; world.gold = [];
+    world.obs = []; world.gold = []; world.decor = [];
     world.lines = Array.from({length: 6}, (_, i) => i * (view.h / 6));
     world.particles = []; world.sparks = [];
     show(null);
@@ -433,6 +452,18 @@ function update(t) {
     world.particles.forEach(p => { p.y += p.vy; p.life -= 0.06; });
     world.particles = world.particles.filter(p => p.life > 0);
 
+    // ИЗМЕНЕНИЕ 3: Спавн декораций
+    if(Math.random() < 0.15 + (state.speed * 0.01)) {
+        const isLeft = Math.random() < 0.5;
+        world.decor.push({
+            x: isLeft ? Math.random() * 4 : view.w - 14 + Math.random() * 4,
+            y: -40,
+            type: Math.floor(Math.random() * 3)
+        });
+    }
+    world.decor.forEach(d => d.y += state.speed);
+    world.decor = world.decor.filter(d => d.y < view.h);
+
     if(t - lastSpawn > Math.max(500, 900 - state.speed * 40)) {
         if(Math.random() > 0.45) {
             const colors = ['#dc2626', '#2563eb', '#d97706', '#7c3aed', '#059669', '#e11d48'];
@@ -466,7 +497,6 @@ function update(t) {
                 document.getElementById('finalScoreVal').textContent = Math.floor(state.score);
                 document.getElementById('finalHighScoreVal').textContent = Math.floor(state.highScore);
                 saveAccountProgress();
-                saveScoreToDB();
                 refreshUI();
                 show('overlayOver');
             }
@@ -501,7 +531,78 @@ function render() {
     const grad = ctx.createLinearGradient(0, 0, 0, view.h);
     grad.addColorStop(0, map.bg1); grad.addColorStop(1, map.bg2);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, view.w, view.h);
+    
+    // ИЗМЕНЕНИЕ 3: Детализация самой дороги (текстуры, стрелки, трещины)
+    ctx.save();
+    if (state.activeMap === 'classic') {
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        world.lines.forEach(y => {
+            ctx.fillRect(view.w * 0.2, y + 10, 2, 8);
+            ctx.fillRect(view.w * 0.8, y + 30, 3, 6);
+        });
+    } else if (state.activeMap === 'tokyo') {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.1)';
+        world.lines.forEach(y => {
+            ctx.beginPath(); ctx.moveTo(view.w/2, y); ctx.lineTo(view.w/2 - 15, y + 20); ctx.lineTo(view.w/2 + 15, y + 20); ctx.fill();
+        });
+    } else if (state.activeMap === 'desert') {
+        ctx.fillStyle = 'rgba(217, 119, 6, 0.15)';
+        world.lines.forEach(y => {
+            ctx.beginPath(); ctx.arc(view.w * 0.3, y + 20, 15, 0, Math.PI); ctx.fill();
+            ctx.beginPath(); ctx.arc(view.w * 0.7, y, 20, 0, Math.PI); ctx.fill();
+        });
+    } else if (state.activeMap === 'cyberpunk') {
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.15)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        world.lines.forEach(y => { ctx.moveTo(14, y); ctx.lineTo(view.w - 14, y); });
+        ctx.moveTo(view.w * 0.3, 0); ctx.lineTo(view.w * 0.3, view.h);
+        ctx.moveTo(view.w * 0.7, 0); ctx.lineTo(view.w * 0.7, view.h);
+        ctx.stroke();
+    } else if (state.activeMap === 'lava') {
+        ctx.strokeStyle = 'rgba(249, 115, 22, 0.2)'; ctx.lineWidth = 2;
+        world.lines.forEach(y => {
+            ctx.beginPath(); ctx.moveTo(view.w * 0.2, y); ctx.lineTo(view.w * 0.3, y + 15); ctx.lineTo(view.w * 0.25, y + 30); ctx.stroke();
+        });
+    }
+    ctx.restore();
+
     ctx.fillStyle = map.side; ctx.fillRect(0, 0, 14, view.h); ctx.fillRect(view.w - 14, 0, 14, view.h);
+    
+    // ИЗМЕНЕНИЕ 3: Отрисовка декораций по краям
+    world.decor.forEach(d => {
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        const mapId = state.activeMap;
+        if (mapId === 'classic') { 
+            ctx.fillStyle = '#452b17'; ctx.fillRect(4, 15, 6, 10);
+            ctx.fillStyle = d.type === 0 ? '#166534' : '#15803d'; 
+            ctx.beginPath(); ctx.arc(7, 10, 10, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(7, 4, 8, 0, Math.PI*2); ctx.fill();
+        } else if (mapId === 'tokyo') { 
+            const colors = ['#ec4899', '#06b6d4', '#eab308'];
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(2, 0, 10, 25);
+            ctx.fillStyle = colors[d.type]; ctx.shadowBlur = 10; ctx.shadowColor = colors[d.type];
+            ctx.fillRect(4, 2, 6, 21);
+        } else if (mapId === 'desert') { 
+            if (d.type === 0) {
+                ctx.fillStyle = '#8b5a2b'; ctx.beginPath(); ctx.arc(7, 18, 5, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.fillStyle = '#16a34a'; roundRect(ctx, 4, 0, 6, 20, 3); ctx.fill();
+                if(d.type === 1) { roundRect(ctx, 0, 8, 14, 4, 2); ctx.fill(); }
+            }
+        } else if (mapId === 'cyberpunk') { 
+            const colors = ['#8b5cf6', '#f43f5e', '#10b981'];
+            ctx.fillStyle = '#020617'; ctx.fillRect(3, 0, 8, 20);
+            ctx.fillStyle = colors[d.type]; ctx.shadowBlur = 12; ctx.shadowColor = colors[d.type];
+            ctx.fillRect(5, 0, 4, 20);
+        } else if (mapId === 'lava') { 
+            ctx.fillStyle = '#1c1917'; ctx.beginPath(); ctx.arc(7, 15, 8, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ea580c'; ctx.shadowBlur = 8; ctx.shadowColor = '#ea580c';
+            ctx.beginPath(); ctx.arc(7, 13, 3, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+    });
+
     ctx.fillStyle = map.line;
     world.lines.forEach(y => { ctx.fillRect(view.w/2 - 3, y, 6, 40); });
 
@@ -546,148 +647,62 @@ function render() {
 
 // === ДЕТАЛИЗИРОВАННЫЕ МАШИНЫ (вид сверху) ===
 function drawDetailedCar(c, type, color) {
-    // Тень
     c.fillStyle = 'rgba(0,0,0,0.3)';
     c.fillRect(2, 4, config.carW - 4, config.carH - 8);
     
     if (type === 'sedan') {
-        // Красный седан (Круизер)
         c.fillStyle = color;
-        // Кузов
-        roundRect(c, 0, 8, config.carW, config.carH - 16, 6);
-        c.fill();
-        // Крыша/кабина
+        roundRect(c, 0, 8, config.carW, config.carH - 16, 6); c.fill();
         c.fillStyle = 'rgba(255,255,255,0.3)';
-        roundRect(c, 5, 16, config.carW - 10, 20, 4);
-        c.fill();
-        // Фары
+        roundRect(c, 5, 16, config.carW - 10, 20, 4); c.fill();
         c.fillStyle = '#fef08a';
-        c.fillRect(3, 10, 6, 4);
-        c.fillRect(config.carW - 9, 10, 6, 4);
-        // Задние фонари
+        c.fillRect(3, 10, 6, 4); c.fillRect(config.carW - 9, 10, 6, 4);
         c.fillStyle = '#dc2626';
-        c.fillRect(3, config.carH - 12, 6, 3);
-        c.fillRect(config.carW - 9, config.carH - 12, 6, 3);
+        c.fillRect(3, config.carH - 12, 6, 3); c.fillRect(config.carW - 9, config.carH - 12, 6, 3);
     } else if (type === 'sport') {
-        // Синий спорткар с спойлером
         c.fillStyle = color;
-        // Основной корпус
-        roundRect(c, 2, 10, config.carW - 4, config.carH - 18, 8);
-        c.fill();
-        // Кабина
+        roundRect(c, 2, 10, config.carW - 4, config.carH - 18, 8); c.fill();
         c.fillStyle = '#1e293b';
-        roundRect(c, 6, 18, config.carW - 12, 16, 4);
-        c.fill();
-        // Спойлер
-        c.fillStyle = color;
-        c.fillRect(0, config.carH - 8, config.carW, 6);
-        c.fillStyle = '#0f172a';
-        c.fillRect(4, config.carH - 6, config.carW - 8, 3);
-        // Фары
+        roundRect(c, 6, 18, config.carW - 12, 16, 4); c.fill();
+        c.fillStyle = color; c.fillRect(0, config.carH - 8, config.carW, 6);
+        c.fillStyle = '#0f172a'; c.fillRect(4, config.carH - 6, config.carW - 8, 3);
         c.fillStyle = '#60a5fa';
-        c.fillRect(4, 12, 5, 4);
-        c.fillRect(config.carW - 9, 12, 5, 4);
+        c.fillRect(4, 12, 5, 4); c.fillRect(config.carW - 9, 12, 5, 4);
     } else if (type === 'truck') {
-        // Зеленый пикап
         c.fillStyle = color;
-        // Кабина
-        roundRect(c, 0, 0, config.carW, config.carH * 0.55, 5);
-        c.fill();
-        // Кузов
+        roundRect(c, 0, 0, config.carW, config.carH * 0.55, 5); c.fill();
         c.fillStyle = '#1e293b';
-        roundRect(c, 2, config.carH * 0.55, config.carW - 4, config.carH * 0.45, 3);
-        c.fill();
-        // Окна
-        c.fillStyle = '#334155';
-        c.fillRect(4, 10, config.carW - 8, 12);
-        // Фары
+        roundRect(c, 2, config.carH * 0.55, config.carW - 4, config.carH * 0.45, 3); c.fill();
+        c.fillStyle = '#334155'; c.fillRect(4, 10, config.carW - 8, 12);
         c.fillStyle = '#fef08a';
-        c.fillRect(3, 4, 5, 3);
-        c.fillRect(config.carW - 8, 4, 5, 3);
+        c.fillRect(3, 4, 5, 3); c.fillRect(config.carW - 8, 4, 5, 3);
     } else if (type === 'cyber') {
-        // Серебристый кибер-пикап (футуристичный)
-        c.fillStyle = color;
-        // Угловатый корпус
-        c.beginPath();
-        c.moveTo(4, 0);
-        c.lineTo(config.carW - 4, 0);
-        c.lineTo(config.carW, config.carH * 0.3);
-        c.lineTo(config.carW, config.carH - 4);
-        c.lineTo(0, config.carH - 4);
-        c.lineTo(0, config.carH * 0.3);
-        c.closePath();
-        c.fill();
-        // Кабина
-        c.fillStyle = '#0f172a';
-        c.beginPath();
-        c.moveTo(6, 8);
-        c.lineTo(config.carW - 6, 8);
-        c.lineTo(config.carW - 8, config.carH * 0.35);
-        c.lineTo(8, config.carH * 0.35);
-        c.closePath();
-        c.fill();
-        // Светящиеся элементы
-        c.fillStyle = '#06b6d4';
-        c.fillRect(6, config.carH * 0.4, config.carW - 12, 3);
+        c.fillStyle = color; c.beginPath(); c.moveTo(4, 0); c.lineTo(config.carW - 4, 0); c.lineTo(config.carW, config.carH * 0.3); c.lineTo(config.carW, config.carH - 4); c.lineTo(0, config.carH - 4); c.lineTo(0, config.carH * 0.3); c.closePath(); c.fill();
+        c.fillStyle = '#0f172a'; c.beginPath(); c.moveTo(6, 8); c.lineTo(config.carW - 6, 8); c.lineTo(config.carW - 8, config.carH * 0.35); c.lineTo(8, config.carH * 0.35); c.closePath(); c.fill();
+        c.fillStyle = '#06b6d4'; c.fillRect(6, config.carH * 0.4, config.carW - 12, 3);
     } else if (type === 'taxi') {
-        // Желтое такси с шашечками
         c.fillStyle = color;
-        // Кузов
-        roundRect(c, 0, 6, config.carW, config.carH - 12, 6);
-        c.fill();
-        // Крыша с шашечками
+        roundRect(c, 0, 6, config.carW, config.carH - 12, 6); c.fill();
         c.fillStyle = '#000';
-        for(let i = 0; i < 6; i++) {
-            for(let j = 0; j < 2; j++) {
-                if((i + j) % 2 === 0) {
-                    c.fillRect(6 + i * 6, 16 + j * 6, 6, 6);
-                }
-            }
-        }
-        // Кабина
+        for(let i = 0; i < 6; i++) { for(let j = 0; j < 2; j++) { if((i + j) % 2 === 0) { c.fillRect(6 + i * 6, 16 + j * 6, 6, 6); } } }
         c.fillStyle = '#1e3a8a';
-        roundRect(c, 5, 14, config.carW - 10, 18, 4);
-        c.fill();
-        // Такси знак на крыше
-        c.fillStyle = '#fbbf24';
-        c.fillRect(config.carW/2 - 5, 8, 10, 6);
-        // Фары
+        roundRect(c, 5, 14, config.carW - 10, 18, 4); c.fill();
+        c.fillStyle = '#fbbf24'; c.fillRect(config.carW/2 - 5, 8, 10, 6);
         c.fillStyle = '#fef08a';
-        c.fillRect(3, 8, 6, 4);
-        c.fillRect(config.carW - 9, 8, 6, 4);
+        c.fillRect(3, 8, 6, 4); c.fillRect(config.carW - 9, 8, 6, 4);
     } else if (type === 'formula') {
-        // Золотая Формула-1
         c.fillStyle = color;
-        // Переднее антикрыло
-        c.fillRect(0, 2, config.carW, 4);
-        // Нос
-        c.fillRect(config.carW/2 - 4, 6, 8, 12);
-        // Основной корпус
-        roundRect(c, 4, 16, config.carW - 8, config.carH - 24, 6);
-        c.fill();
-        // Заднее антикрыло
-        c.fillStyle = '#dc2626';
-        c.fillRect(0, config.carH - 6, config.carW, 5);
-        // Кабина пилота
-        c.fillStyle = '#0f172a';
-        c.beginPath();
-        c.arc(config.carW/2, 28, 6, 0, Math.PI * 2);
-        c.fill();
-        // Передние колеса
-        c.fillStyle = '#1e293b';
-        c.fillRect(-2, 10, 6, 10);
-        c.fillRect(config.carW - 4, 10, 6, 10);
-        // Задние колеса (шире)
-        c.fillRect(-3, config.carH - 18, 8, 12);
-        c.fillRect(config.carW - 5, config.carH - 18, 8, 12);
+        c.fillRect(0, 2, config.carW, 4); c.fillRect(config.carW/2 - 4, 6, 8, 12);
+        roundRect(c, 4, 16, config.carW - 8, config.carH - 24, 6); c.fill();
+        c.fillStyle = '#dc2626'; c.fillRect(0, config.carH - 6, config.carW, 5);
+        c.fillStyle = '#0f172a'; c.beginPath(); c.arc(config.carW/2, 28, 6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#1e293b'; c.fillRect(-2, 10, 6, 10); c.fillRect(config.carW - 4, 10, 6, 10);
+        c.fillRect(-3, config.carH - 18, 8, 12); c.fillRect(config.carW - 5, config.carH - 18, 8, 12);
     }
     
-    // Колеса (для всех типов)
     c.fillStyle = '#0f172a';
-    c.fillRect(0, 14, 4, 12);
-    c.fillRect(config.carW - 4, 14, 4, 12);
-    c.fillRect(0, config.carH - 20, 4, 12);
-    c.fillRect(config.carW - 4, config.carH - 20, 4, 12);
+    c.fillRect(0, 14, 4, 12); c.fillRect(config.carW - 4, 14, 4, 12);
+    c.fillRect(0, config.carH - 20, 4, 12); c.fillRect(config.carW - 4, config.carH - 20, 4, 12);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -699,9 +714,7 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.closePath();
 }
 
-function hit(a, aw, ah, b, bw, bh) { 
-    return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; 
-}
+function hit(a, aw, ah, b, bw, bh) { return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; }
 
 function show(id) {
     document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
@@ -741,15 +754,9 @@ function renderCatalog() {
             document.getElementById(`prev_${item.id}`).appendChild(pCanv);
             card.querySelector('button').onclick = () => {
                 if(!isOwned && state.coins >= item.p) { 
-                    state.coins -= item.p; 
-                    state.ownedCars.push(item.id); 
-                    Sound.buy(); 
-                } else if(isOwned) { 
-                    state.activeCar = item.id; 
-                }
-                saveAccountProgress(); 
-                refreshUI(); 
-                renderCatalog();
+                    state.coins -= item.p; state.ownedCars.push(item.id); Sound.buy(); 
+                } else if(isOwned) { state.activeCar = item.id; }
+                saveAccountProgress(); refreshUI(); renderCatalog();
             };
         });
     } else if(currentTab === 'maps') {
@@ -765,15 +772,9 @@ function renderCatalog() {
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
                 if(!isOwned && state.coins >= item.p) { 
-                    state.coins -= item.p; 
-                    state.ownedMaps.push(item.id); 
-                    Sound.buy();
-                } else if(isOwned) { 
-                    state.activeMap = item.id; 
-                }
-                saveAccountProgress(); 
-                refreshUI(); 
-                renderCatalog();
+                    state.coins -= item.p; state.ownedMaps.push(item.id); Sound.buy();
+                } else if(isOwned) { state.activeMap = item.id; }
+                saveAccountProgress(); refreshUI(); renderCatalog();
             };
         });
     } else {
@@ -790,12 +791,8 @@ function renderCatalog() {
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
                 if(!isMax && state.coins >= price) { 
-                    state.coins -= price; 
-                    state.upgrades[item.id] = currentLvl + 1; 
-                    Sound.buy();
-                    saveAccountProgress(); 
-                    refreshUI(); 
-                    renderCatalog(); 
+                    state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy();
+                    saveAccountProgress(); refreshUI(); renderCatalog(); 
                 }
             };
         });
