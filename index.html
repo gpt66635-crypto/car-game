@@ -34,7 +34,17 @@ align-items: center; border: 1px solid rgba(255,255,255,0.06);
 .score-row > div { flex: 1; background: rgba(255, 255, 255, 0.07); padding: 8px 10px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.03); white-space: nowrap; }
 #boostBarWrap { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
 #boostBarFill { height: 100%; width: 100%; background: linear-gradient(90deg, #3b82f6, var(--accent-cyan)); transition: width 0.1s linear; }
-#gameCanvas { background-color: var(--road-grey); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; width: 100%; height: 400px; display: block; touch-action: none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+#gameCanvas { 
+background-color: var(--road-grey); 
+border: 1px solid rgba(255,255,255,0.1); 
+border-radius: 16px; 
+width: 100%; 
+height: 400px; 
+display: block; 
+touch-action: none; 
+box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+margin-top: 8px; /* Сдвигаем вниз от панели */
+}
 .controls { display: flex; width: 100%; gap: 12px; margin-top: 14px; }
 .btn { border: none; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-family: inherit; }
 .btn:active { transform: scale(0.96); }
@@ -51,7 +61,7 @@ align-items: center; border: 1px solid rgba(255,255,255,0.06);
 .tab-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
 .market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; margin-bottom: 16px; max-height: 240px; overflow-y: auto; padding: 4px; }
 .market-item { background: #1e293b; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,0.04); }
-.car-preview-render { width: 40px; height: 55px; margin-bottom: 6px; }
+.car-preview-render { width: 50px; height: 70px; margin-bottom: 6px; }
 .map-preview-render { width: 64px; height: 42px; border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.15); }
 .upgrade-icon-render { font-size: 1.8rem; margin-bottom: 6px; height: 55px; display: flex; align-items: center; }
 .item-name { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; text-align: center; }
@@ -79,7 +89,7 @@ align-items: center; border: 1px solid rgba(255,255,255,0.06);
 <canvas id="gameCanvas"></canvas>
 <div class="controls">
 <button id="lBtn" class="btn btn-control">←</button>
-<button id="shieldBtn" class="btn">️ ЩИТ</button>
+<button id="shieldBtn" class="btn">🛡️ ЩИТ</button>
 <button id="rBtn" class="btn btn-control">→</button>
 </div>
 
@@ -100,7 +110,7 @@ align-items: center; border: 1px solid rgba(255,255,255,0.06);
 </div>
 
 <div id="overlayLeaderboard" class="overlay hidden">
-<h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;">🏆 Топ гонщиков</h2>
+<h2 style="color: var(--accent-yellow); margin: 0 0 20px 0;"> Топ гонщиков</h2>
 <div class="leaderboard-list" id="lbList">
 <div style="text-align:center;opacity:0.5;padding:20px">Загрузка...</div>
 </div>
@@ -179,7 +189,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // === СИСТЕМА АККАУНТОВ ===
-// Каждый игрок хранит свой прогресс под ключом "cg_save_Ник"
 let playerNick = localStorage.getItem('cg_nick') || '';
 let defaultSave = {
     coins: 0, highScore: 0,
@@ -188,14 +197,12 @@ let defaultSave = {
     upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
 };
 
-// Инициализация state
 let state = {
     running: false, paused: false, score: 0, highScore: 0, coins: 0, speed: 4.0,
     ownedCars: ['red'], activeCar: 'red', ownedMaps: ['classic'], activeMap: 'classic',
     shieldCharge: 100, shieldActive: false, upgrades: { magnet: 0, shield: 0, scoreMultiplier: 0 }
 };
 
-// Загрузка прогресса конкретного игрока
 function loadAccountProgress(nick) {
     try {
         const saved = localStorage.getItem('cg_save_' + nick);
@@ -209,19 +216,14 @@ function loadAccountProgress(nick) {
             state.activeMap = d.activeMap || 'classic';
             state.upgrades = d.upgrades || { magnet: 0, shield: 0, scoreMultiplier: 0 };
         } else {
-            // Новый игрок — стартовый прогресс
-            state.coins = 0;
-            state.highScore = 0;
-            state.ownedCars = ['red'];
-            state.activeCar = 'red';
-            state.ownedMaps = ['classic'];
-            state.activeMap = 'classic';
+            state.coins = 0; state.highScore = 0;
+            state.ownedCars = ['red']; state.activeCar = 'red';
+            state.ownedMaps = ['classic']; state.activeMap = 'classic';
             state.upgrades = { magnet: 0, shield: 0, scoreMultiplier: 0 };
         }
     } catch(e) {}
 }
 
-// Сохранение прогресса текущего игрока
 function saveAccountProgress() {
     try {
         if (!playerNick) return;
@@ -234,7 +236,6 @@ function saveAccountProgress() {
     } catch(e) {}
 }
 
-// Проверка ника при загрузке
 if (!playerNick || playerNick === 'Игрок' || playerNick.trim() === '') {
     document.getElementById('overlayNick').classList.remove('hidden');
     document.getElementById('overlayMain').classList.add('hidden');
@@ -250,7 +251,7 @@ document.getElementById('saveNickBtn').onclick = () => {
     if (nick.length > 0 && nick !== 'Игрок') {
         playerNick = nick;
         localStorage.setItem('cg_nick', nick);
-        loadAccountProgress(nick); // Загружаем прогресс этого игрока
+        loadAccountProgress(nick);
         document.getElementById('playerNickDisplay').textContent = nick;
         refreshUI();
         show('overlayMain');
@@ -259,9 +260,8 @@ document.getElementById('saveNickBtn').onclick = () => {
     }
 };
 
-// Смена аккаунта — сохраняем текущий и показываем экран ввода
 document.getElementById('changeNickBtn').onclick = () => {
-    saveAccountProgress(); // Сохраняем прогресс текущего игрока
+    saveAccountProgress();
     playerNick = '';
     localStorage.removeItem('cg_nick');
     document.getElementById('overlayMain').classList.add('hidden');
@@ -283,7 +283,7 @@ document.getElementById('devBtn').onclick = () => {
             db.ref('leaderboard').remove().then(() => { alert("🏆 Рейтинг очищен!"); loadLeaderboard(); });
         }
     } else if (code !== null) {
-        alert("❌ Неверный код!");
+        alert(" Неверный код!");
     }
 };
 
@@ -316,11 +316,12 @@ let dragging = false, dragOffsetX = 0, currentTab = 'cars', view = { w: 0, h: 0 
 const catalogCars = [
     { id: 'red', c: '#e74c3c', p: 0, n: 'Круизер', type: 'sedan' },
     { id: 'blue', c: '#3498db', p: 60, n: 'Спорт Апекс', type: 'sport' },
-    { id: 'green', c: '#2ecc71', p: 140, n: 'Носорог SUV', type: 'truck' },
-    { id: 'cyber', c: '#95a5a6', p: 250, n: 'Кибер Трак', type: 'cyber' },
-    { id: 'neon', c: '#a855f7', p: 450, n: 'Неон Вайпер', type: 'sport' },
-    { id: 'gold', c: '#f59e0b', p: 800, n: 'Гипер Голд', type: 'cyber' }
+    { id: 'green', c: '#27ae60', p: 140, n: 'Пикап', type: 'truck' },
+    { id: 'cyber', c: '#bdc3c7', p: 250, n: 'Кибер Трак', type: 'cyber' },
+    { id: 'neon', c: '#f1c40f', p: 450, n: 'Такси', type: 'taxi' },
+    { id: 'gold', c: '#f39c12', p: 800, n: 'Формула 1', type: 'formula' }
 ];
+
 const catalogMaps = [
     { id: 'classic', n: 'Чистый Асфальт', p: 0, bg1: '#1e2530', bg2: '#111622', line: '#ffffff', side: '#4b5563' },
     { id: 'tokyo', n: 'Ночной Токио', p: 80, bg1: '#11101b', bg2: '#07060b', line: '#38bdf8', side: '#1e1b4b' },
@@ -328,10 +329,11 @@ const catalogMaps = [
     { id: 'cyberpunk', n: 'Неоновый Пульс', p: 300, bg1: '#1e112a', bg2: '#0f0516', line: '#f43f5e', side: '#4c1d95' },
     { id: 'lava', n: 'Адский Трек', p: 500, bg1: '#2d0f0f', bg2: '#180505', line: '#f97316', side: '#7c2d12' }
 ];
+
 const catalogUpgrades = [
     { id: 'magnet', n: 'Магнит монет', d: 'Сбор золота', max: 3, prices: [50, 120, 250], icon: '🧲' },
     { id: 'shield', n: 'Турбо Щит', d: 'Быстрее откат', max: 3, prices: [70, 150, 300], icon: '⚡' },
-    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '' }
+    { id: 'scoreMultiplier', n: 'Множитель', d: 'Больше очков', max: 3, prices: [60, 140, 280], icon: '📈' }
 ];
 
 function init() {
@@ -531,7 +533,7 @@ function render() {
     ctx.rotate(world.car.tilt || 0); ctx.translate(-config.carW/2, -config.carH/2);
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(2, config.carH, config.carW - 4, 5);
     const carModel = catalogCars.find(c => c.id === state.activeCar) || catalogCars[0];
-    drawCarModel(ctx, carModel.type, carModel.c);
+    drawDetailedCar(ctx, carModel.type, carModel.c);
     ctx.restore();
 
     if(state.shieldActive) {
@@ -542,95 +544,264 @@ function render() {
     }
 }
 
-function drawCarModel(c, type, color) {
-    c.fillStyle = color;
-    if(type === 'sport') {
-        roundRect(c, 2, 8, config.carW - 4, config.carH - 8, 12); c.fill();
-        c.fillStyle = '#0f172a'; c.fillRect(0, config.carH - 6, config.carW, 4);
-        roundRect(c, 6, 22, config.carW - 12, 14, 4); c.fill();
-    } else if(type === 'truck') {
-        roundRect(c, 0, 0, config.carW, config.carH, 5); c.fill();
-        c.fillStyle = '#0f172a'; c.fillRect(4, 16, config.carW - 8, 12);
-        c.fillStyle = '#475569'; c.fillRect(4, 46, config.carW - 8, 20);
-    } else if(type === 'cyber') {
-        c.beginPath(); c.moveTo(config.carW/2, 0); c.lineTo(config.carW, config.carH * 0.32);
-        c.lineTo(config.carW - 3, config.carH); c.lineTo(3, config.carH);
-        c.lineTo(0, config.carH * 0.32); c.closePath(); c.fill();
-        c.fillStyle = '#06b6d4'; c.fillRect(6, config.carH * 0.36, config.carW - 12, 4);
-    } else {
-        roundRect(c, 0, 0, config.carW, config.carH, 8); c.fill();
-        c.fillStyle = "rgba(255,255,255,0.5)"; roundRect(c, 6, 14, config.carW - 12, 16, 4); c.fill();
-        c.fillStyle = "rgba(255,255,255,0.3)"; roundRect(c, 7, config.carH - 22, config.carW - 14, 8, 2); c.fill();
+// === ДЕТАЛИЗИРОВАННЫЕ МАШИНЫ (вид сверху) ===
+function drawDetailedCar(c, type, color) {
+    // Тень
+    c.fillStyle = 'rgba(0,0,0,0.3)';
+    c.fillRect(2, 4, config.carW - 4, config.carH - 8);
+    
+    if (type === 'sedan') {
+        // Красный седан (Круизер)
+        c.fillStyle = color;
+        // Кузов
+        roundRect(c, 0, 8, config.carW, config.carH - 16, 6);
+        c.fill();
+        // Крыша/кабина
+        c.fillStyle = 'rgba(255,255,255,0.3)';
+        roundRect(c, 5, 16, config.carW - 10, 20, 4);
+        c.fill();
+        // Фары
+        c.fillStyle = '#fef08a';
+        c.fillRect(3, 10, 6, 4);
+        c.fillRect(config.carW - 9, 10, 6, 4);
+        // Задние фонари
+        c.fillStyle = '#dc2626';
+        c.fillRect(3, config.carH - 12, 6, 3);
+        c.fillRect(config.carW - 9, config.carH - 12, 6, 3);
+    } else if (type === 'sport') {
+        // Синий спорткар с спойлером
+        c.fillStyle = color;
+        // Основной корпус
+        roundRect(c, 2, 10, config.carW - 4, config.carH - 18, 8);
+        c.fill();
+        // Кабина
+        c.fillStyle = '#1e293b';
+        roundRect(c, 6, 18, config.carW - 12, 16, 4);
+        c.fill();
+        // Спойлер
+        c.fillStyle = color;
+        c.fillRect(0, config.carH - 8, config.carW, 6);
+        c.fillStyle = '#0f172a';
+        c.fillRect(4, config.carH - 6, config.carW - 8, 3);
+        // Фары
+        c.fillStyle = '#60a5fa';
+        c.fillRect(4, 12, 5, 4);
+        c.fillRect(config.carW - 9, 12, 5, 4);
+    } else if (type === 'truck') {
+        // Зеленый пикап
+        c.fillStyle = color;
+        // Кабина
+        roundRect(c, 0, 0, config.carW, config.carH * 0.55, 5);
+        c.fill();
+        // Кузов
+        c.fillStyle = '#1e293b';
+        roundRect(c, 2, config.carH * 0.55, config.carW - 4, config.carH * 0.45, 3);
+        c.fill();
+        // Окна
+        c.fillStyle = '#334155';
+        c.fillRect(4, 10, config.carW - 8, 12);
+        // Фары
+        c.fillStyle = '#fef08a';
+        c.fillRect(3, 4, 5, 3);
+        c.fillRect(config.carW - 8, 4, 5, 3);
+    } else if (type === 'cyber') {
+        // Серебристый кибер-пикап (футуристичный)
+        c.fillStyle = color;
+        // Угловатый корпус
+        c.beginPath();
+        c.moveTo(4, 0);
+        c.lineTo(config.carW - 4, 0);
+        c.lineTo(config.carW, config.carH * 0.3);
+        c.lineTo(config.carW, config.carH - 4);
+        c.lineTo(0, config.carH - 4);
+        c.lineTo(0, config.carH * 0.3);
+        c.closePath();
+        c.fill();
+        // Кабина
+        c.fillStyle = '#0f172a';
+        c.beginPath();
+        c.moveTo(6, 8);
+        c.lineTo(config.carW - 6, 8);
+        c.lineTo(config.carW - 8, config.carH * 0.35);
+        c.lineTo(8, config.carH * 0.35);
+        c.closePath();
+        c.fill();
+        // Светящиеся элементы
+        c.fillStyle = '#06b6d4';
+        c.fillRect(6, config.carH * 0.4, config.carW - 12, 3);
+    } else if (type === 'taxi') {
+        // Желтое такси с шашечками
+        c.fillStyle = color;
+        // Кузов
+        roundRect(c, 0, 6, config.carW, config.carH - 12, 6);
+        c.fill();
+        // Крыша с шашечками
+        c.fillStyle = '#000';
+        for(let i = 0; i < 6; i++) {
+            for(let j = 0; j < 2; j++) {
+                if((i + j) % 2 === 0) {
+                    c.fillRect(6 + i * 6, 16 + j * 6, 6, 6);
+                }
+            }
+        }
+        // Кабина
+        c.fillStyle = '#1e3a8a';
+        roundRect(c, 5, 14, config.carW - 10, 18, 4);
+        c.fill();
+        // Такси знак на крыше
+        c.fillStyle = '#fbbf24';
+        c.fillRect(config.carW/2 - 5, 8, 10, 6);
+        // Фары
+        c.fillStyle = '#fef08a';
+        c.fillRect(3, 8, 6, 4);
+        c.fillRect(config.carW - 9, 8, 6, 4);
+    } else if (type === 'formula') {
+        // Золотая Формула-1
+        c.fillStyle = color;
+        // Переднее антикрыло
+        c.fillRect(0, 2, config.carW, 4);
+        // Нос
+        c.fillRect(config.carW/2 - 4, 6, 8, 12);
+        // Основной корпус
+        roundRect(c, 4, 16, config.carW - 8, config.carH - 24, 6);
+        c.fill();
+        // Заднее антикрыло
+        c.fillStyle = '#dc2626';
+        c.fillRect(0, config.carH - 6, config.carW, 5);
+        // Кабина пилота
+        c.fillStyle = '#0f172a';
+        c.beginPath();
+        c.arc(config.carW/2, 28, 6, 0, Math.PI * 2);
+        c.fill();
+        // Передние колеса
+        c.fillStyle = '#1e293b';
+        c.fillRect(-2, 10, 6, 10);
+        c.fillRect(config.carW - 4, 10, 6, 10);
+        // Задние колеса (шире)
+        c.fillRect(-3, config.carH - 18, 8, 12);
+        c.fillRect(config.carW - 5, config.carH - 18, 8, 12);
     }
-    c.fillStyle = '#090d16';
-    c.fillRect(-2, 12, 3, 12); c.fillRect(config.carW - 1, 12, 3, 12);
-    c.fillRect(-2, config.carH - 22, 3, 12); c.fillRect(config.carW - 1, config.carH - 22, 3, 12);
-    c.fillStyle = '#fff'; c.fillRect(4, 2, 6, 3); c.fillRect(config.carW - 10, 2, 6, 3);
+    
+    // Колеса (для всех типов)
+    c.fillStyle = '#0f172a';
+    c.fillRect(0, 14, 4, 12);
+    c.fillRect(config.carW - 4, 14, 4, 12);
+    c.fillRect(0, config.carH - 20, 4, 12);
+    c.fillRect(config.carW - 4, config.carH - 20, 4, 12);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath(); ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    ctx.arcTo(x + w, y, x + w, y + h, r); 
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); 
+    ctx.arcTo(x, y, x + w, y, r); 
+    ctx.closePath();
 }
-function hit(a, aw, ah, b, bw, bh) { return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; }
+
+function hit(a, aw, ah, b, bw, bh) { 
+    return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y; 
+}
+
 function show(id) {
     document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
     if(id) document.getElementById(id).classList.remove('hidden');
     if(id === 'overlayMarket') renderCatalog();
 }
+
 function switchTab() {
     document.getElementById('tabCars').classList.toggle('active', currentTab === 'cars');
     document.getElementById('tabMaps').classList.toggle('active', currentTab === 'maps');
     document.getElementById('tabUpgrades').classList.toggle('active', currentTab === 'upgrades');
     renderCatalog();
 }
+
 function refreshUI() {
     document.getElementById('coinVal').textContent = state.coins;
     document.getElementById('highScoreVal').textContent = Math.floor(state.highScore);
 }
+
 function renderCatalog() {
-    const grid = document.getElementById('marketList'); grid.innerHTML = '';
+    const grid = document.getElementById('marketList'); 
+    grid.innerHTML = '';
     if(currentTab === 'cars') {
         catalogCars.forEach(item => {
             const isOwned = state.ownedCars.includes(item.id), isActive = state.activeCar === item.id;
-            const card = document.createElement('div'); card.className = 'market-item';
-            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div><div class="item-name">${item.n}</div><div class="item-desc">${item.type === 'sport' ? 'Спортивная' : item.type === 'truck' ? 'Тяжелая' : 'Концепт'}</div><div class="item-price">${isOwned ? 'В наличии' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
+            const card = document.createElement('div'); 
+            card.className = 'market-item';
+            card.innerHTML = `<div class="car-preview-render" id="prev_${item.id}"></div>
+                <div class="item-name">${item.n}</div>
+                <div class="item-desc">${item.type === 'sport' ? 'Спорт' : item.type === 'truck' ? 'Пикап' : item.type === 'formula' ? 'Формула-1' : item.type === 'taxi' ? 'Такси' : 'Кибер'}</div>
+                <div class="item-price">${isOwned ? 'В наличии' : item.p + ' 💰'}</div>
+                <button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Выбрана' : isOwned ? 'Взять' : 'Купить'}</button>`;
             grid.appendChild(card);
-            const pCanv = document.createElement('canvas'); pCanv.width = 40; pCanv.height = 55;
-            drawCarModel(pCanv.getContext('2d'), item.type, item.c);
+            const pCanv = document.createElement('canvas'); 
+            pCanv.width = 50; pCanv.height = 70;
+            drawDetailedCar(pCanv.getContext('2d'), item.type, item.c);
             document.getElementById(`prev_${item.id}`).appendChild(pCanv);
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedCars.push(item.id); Sound.buy(); } 
-                else if(isOwned) { state.activeCar = item.id; }
-                saveAccountProgress(); refreshUI(); renderCatalog();
+                if(!isOwned && state.coins >= item.p) { 
+                    state.coins -= item.p; 
+                    state.ownedCars.push(item.id); 
+                    Sound.buy(); 
+                } else if(isOwned) { 
+                    state.activeCar = item.id; 
+                }
+                saveAccountProgress(); 
+                refreshUI(); 
+                renderCatalog();
             };
         });
     } else if(currentTab === 'maps') {
         catalogMaps.forEach(item => {
             const isOwned = state.ownedMaps.includes(item.id), isActive = state.activeMap === item.id;
-            const card = document.createElement('div'); card.className = 'market-item';
-            card.innerHTML = `<div class="map-preview-render" style="background:linear-gradient(140deg, ${item.bg1}, ${item.bg2})"></div><div class="item-name">${item.n}</div><div class="item-desc">Уникальный трек</div><div class="item-price">${isOwned ? 'Доступна' : item.p + ' 💰'}</div><button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Активна' : isOwned ? 'Выбрать' : 'Открыть'}</button>`;
+            const card = document.createElement('div'); 
+            card.className = 'market-item';
+            card.innerHTML = `<div class="map-preview-render" style="background:linear-gradient(140deg, ${item.bg1}, ${item.bg2})"></div>
+                <div class="item-name">${item.n}</div>
+                <div class="item-desc">Уникальный трек</div>
+                <div class="item-price">${isOwned ? 'Доступна' : item.p + ' 💰'}</div>
+                <button class="btn buy-btn" style="background:${isActive ? '#f59e0b' : isOwned ? '#10b981' : '#3b82f6'}">${isActive ? 'Активна' : isOwned ? 'Выбрать' : 'Открыть'}</button>`;
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
-                if(!isOwned && state.coins >= item.p) { state.coins -= item.p; state.ownedMaps.push(item.id); Sound.buy(); } 
-                else if(isOwned) { state.activeMap = item.id; }
-                saveAccountProgress(); refreshUI(); renderCatalog();
+                if(!isOwned && state.coins >= item.p) { 
+                    state.coins -= item.p; 
+                    state.ownedMaps.push(item.id); 
+                    Sound.buy();
+                } else if(isOwned) { 
+                    state.activeMap = item.id; 
+                }
+                saveAccountProgress(); 
+                refreshUI(); 
+                renderCatalog();
             };
         });
     } else {
         catalogUpgrades.forEach(item => {
             const currentLvl = state.upgrades[item.id] || 0, isMax = currentLvl >= item.max;
             const price = isMax ? 0 : item.prices[currentLvl];
-            const card = document.createElement('div'); card.className = 'market-item';
-            card.innerHTML = `<div class="upgrade-icon-render">${item.icon}</div><div class="item-name">${item.n}</div><div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div><div class="item-price">${isMax ? 'Максимум' : price + ' 💰'}</div><button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>${isMax ? 'Изучено' : 'Улучшить'}</button>`;
+            const card = document.createElement('div'); 
+            card.className = 'market-item';
+            card.innerHTML = `<div class="upgrade-icon-render">${item.icon}</div>
+                <div class="item-name">${item.n}</div>
+                <div class="item-desc">${item.d}<br><b>Ур. ${currentLvl}/${item.max}</b></div>
+                <div class="item-price">${isMax ? 'Максимум' : price + ' '}</div>
+                <button class="btn buy-btn" style="background:${isMax ? '#64748b' : 'linear-gradient(180deg, #10b981, #059669)'}" ${isMax ? 'disabled' : ''}>${isMax ? 'Изучено' : 'Улучшить'}</button>`;
             grid.appendChild(card);
             card.querySelector('button').onclick = () => {
-                if(!isMax && state.coins >= price) { state.coins -= price; state.upgrades[item.id] = currentLvl + 1; Sound.buy(); saveAccountProgress(); refreshUI(); renderCatalog(); }
+                if(!isMax && state.coins >= price) { 
+                    state.coins -= price; 
+                    state.upgrades[item.id] = currentLvl + 1; 
+                    Sound.buy();
+                    saveAccountProgress(); 
+                    refreshUI(); 
+                    renderCatalog(); 
+                }
             };
         });
     }
 }
+
 window.onresize = () => { resize(); if(!state.running) render(); };
 init();
 </script>
